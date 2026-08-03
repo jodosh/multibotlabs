@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>MultiBot Coinks</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div class="titlebar">
+      <span id="title" class="titlebar-title">Coinks</span>
+      <button id="close-button" class="titlebar-close" title="Close">✕</button>
+    </div>
+
+    <div class="overlay-bar">
+      <div class="overlay-row">
+        <span id="overlay-indicator" class="indicator">●</span>
+        <input id="overlay-url" type="text" readonly />
+        <button id="copy-url-button">Copy</button>
+      </div>
+      <span id="overlay-status" class="hint">Add this as a Browser Source in OBS.</span>
+    </div>
+
+    <label class="field">
+      <span>Bits price</span>
+      <input id="bits-price" type="number" min="0" step="1" />
+    </label>
+    <p class="hint">
+      Joins the queue when a cheer matches this amount <strong>exactly</strong>. Set to 0 to disable the bits
+      trigger.
+    </p>
+
+    <label class="checkbox"><input id="command-enabled" type="checkbox" /> Let chat join with !coinks</label>
+
+    <label class="field">
+      <span>Coins per game</span>
+      <input id="coins-per-game" type="number" min="1" max="50" step="1" />
+    </label>
+    <p class="hint">Whoever's turn it is releases them with <strong>!coin</strong>.</p>
+
+    <label class="field">
+      <span>Volume</span>
+      <input id="volume" type="range" min="0" max="1" step="0.05" />
+    </label>
+    <p class="hint">
+      Sound comes from the browser source. Tick <strong>Control audio via OBS</strong> on it to get a mixer
+      channel; otherwise it goes to your desktop audio.
+    </p>
+
+    <h2>Queue</h2>
+    <p id="queue-current" class="current">Nobody is playing.</p>
+    <ol id="queue-list" class="queue"></ol>
+
+    <div class="toolbar">
+      <input id="test-player" type="text" placeholder="Username" />
+      <button id="test-button">Queue player</button>
+    </div>
+
+    <h2>Top scores</h2>
+    <ol id="leaderboard" class="queue"></ol>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

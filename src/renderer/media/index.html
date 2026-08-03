@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>MultiBot Media</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div class="titlebar">
+      <span id="title" class="titlebar-title">Media</span>
+      <button id="close-button" class="titlebar-close" title="Close">✕</button>
+    </div>
+
+    <div class="overlay-bar">
+      <div class="overlay-row">
+        <span id="overlay-indicator" class="indicator">●</span>
+        <input id="overlay-url" type="text" readonly />
+        <button id="copy-url-button">Copy</button>
+      </div>
+      <div class="overlay-row">
+        <span id="overlay-status" class="hint">Add this as a Browser Source in OBS.</span>
+        <label class="port-label">Port <input id="overlay-port" type="number" min="1024" max="65535" /></label>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <button id="add-button">+ Add Media</button>
+      <button id="import-button">Import from old MultiBot</button>
+      <input id="search" class="search" type="search" placeholder="Filter…" />
+    </div>
+
+    <p id="empty-state">No media yet. Add a gif, image, or video and give it a !command.</p>
+    <ul id="media-list" class="list"></ul>
+    <p id="import-summary"></p>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

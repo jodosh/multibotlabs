@@ -1,0 +1,254 @@
+@import '../assets/fonts/space-mono.css';
+@import '../assets/theme.css';
+@import '../assets/titlebar.css';
+@import '../assets/modal.css';
+
+html {
+  height: 100%;
+}
+
+/* Same fixed-height flex column as the AtMe queue: only .list scrolls, so a
+   long media library never produces a second outer scrollbar. */
+body {
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: 'Space Mono', ui-monospace, monospace;
+  margin: 0;
+  padding: 20px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  color-scheme: dark;
+}
+
+.overlay-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-input-border);
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 14px;
+}
+
+.overlay-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.indicator {
+  flex: none;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.indicator.connected {
+  color: var(--color-status-enabled);
+}
+
+.indicator.waiting {
+  color: var(--color-text-muted);
+}
+
+.indicator.error {
+  color: var(--color-status-error);
+}
+
+#overlay-url {
+  flex: 1;
+  min-width: 0;
+  background: var(--color-bg);
+  border: 1px solid var(--color-input-border);
+  border-radius: 4px;
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 12px;
+  padding: 5px 8px;
+}
+
+.hint {
+  flex: 1;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.port-label {
+  flex: none;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.port-label input {
+  width: 72px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-input-border);
+  border-radius: 4px;
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 12px;
+  padding: 4px 6px;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.search {
+  margin-left: auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-input-border);
+  border-radius: 6px;
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 6px 10px;
+  width: 160px;
+}
+
+#empty-state,
+#import-summary {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-input-border);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.row input[type='text'] {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--color-input-border);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 4px 2px;
+}
+
+.row .command {
+  flex: 1;
+  min-width: 0;
+}
+
+.filename {
+  flex: none;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+/* A 3x3 grid reads as "where on screen" far faster than a dropdown of nine
+   PascalCase names, which is what the old app used. */
+.anchor-grid {
+  flex: none;
+  display: grid;
+  grid-template-columns: repeat(3, 15px);
+  grid-template-rows: repeat(3, 15px);
+  gap: 3px;
+}
+
+/* Selector must out-specify `.row button` below (0,1,1), which otherwise wins
+   and forces 10px of side padding back in — with border-box that pushes each
+   cell out to 22px inside a 15px track, so they overlap. box-sizing is needed
+   too, since nothing in this app sets it globally. */
+.anchor-grid .anchor-cell {
+  box-sizing: border-box;
+  padding: 0;
+  width: 15px;
+  height: 15px;
+  border: 1px solid var(--color-input-border);
+  border-radius: 2px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.anchor-cell:hover {
+  border-color: var(--color-text-muted);
+}
+
+.anchor-cell.active {
+  background: var(--color-status-connecting);
+  border-color: var(--color-status-connecting);
+}
+
+.row .duration {
+  flex: none;
+  width: 56px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--color-input-border);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 12px;
+  padding: 4px 2px;
+}
+
+.row input[type='range'] {
+  flex: none;
+  width: 70px;
+}
+
+.row input[type='range']:disabled {
+  opacity: 0.35;
+}
+
+button {
+  padding: 6px 14px;
+  background: var(--color-button-bg);
+  border: none;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+button:hover {
+  background: var(--color-button-bg-hover);
+}
+
+.row button {
+  padding: 5px 10px;
+  font-size: 12px;
+  flex: none;
+}
+
+button.danger {
+  background: var(--color-secondary-500);
+}
+
+button.danger:hover {
+  background: var(--color-status-error);
+}

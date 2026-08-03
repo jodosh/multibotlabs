@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>MultiBot Coinks Overlay</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <canvas id="field"></canvas>
+
+    <div id="scoreboard" class="scoreboard">
+      <div class="player" id="sb-player">—</div>
+      <div class="row">
+        <span class="label">SCORE</span>
+        <span class="value" id="sb-score">0</span>
+      </div>
+      <div class="row">
+        <span class="label">COINS</span>
+        <span class="value" id="sb-coins">0</span>
+      </div>
+    </div>
+
+    <div id="banner" class="banner"></div>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

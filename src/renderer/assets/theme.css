@@ -1,0 +1,49 @@
+:root {
+  /* Primary — blue */
+  --color-primary-100: #5c6a98;
+  --color-primary-200: #37477a;
+  --color-primary-300: #1d2c5e;
+  --color-primary-400: #0b1842;
+  --color-primary-500: #030c28;
+
+  /* Secondary — red */
+  --color-secondary-100: #df7c7f;
+  --color-secondary-200: #b24447;
+  --color-secondary-300: #8a1e21;
+  --color-secondary-400: #610608;
+  --color-secondary-500: #3b0002;
+
+  /* Accent — yellow */
+  --color-accent-100: #d2dc7a;
+  --color-accent-200: #a5b043;
+  --color-accent-300: #7d881e;
+  --color-accent-400: #566005;
+  --color-accent-500: #343a00;
+
+  /* Semantic tokens — everything else in the UI should reference these,
+     not the palette scales above directly. */
+  --color-bg: var(--color-primary-500);
+  --color-surface: var(--color-primary-400);
+  --color-bar-bg: var(--color-primary-300);
+  --color-border: #ffffff;
+  --color-text: #f2f2f2;
+  --color-text-muted: #b7b7c2;
+  --color-input-border: var(--color-primary-200);
+
+  --color-status-enabled: var(--color-accent-100);
+  --color-status-connecting: var(--color-accent-300);
+  --color-status-error: var(--color-secondary-200);
+
+  --color-button-bg: var(--color-secondary-300);
+  --color-button-bg-hover: var(--color-secondary-200);
+}
+
+/* A class rule like `.tabs { display: flex }` has the same specificity as
+   the browser's built-in `[hidden] { display: none }` rule, and author
+   styles win ties over the user-agent stylesheet — so `el.hidden = true`
+   silently does nothing wherever a class also sets `display`. This app sets
+   `hidden` on flex/grid containers throughout (tabs, checkbox rows, etc.),
+   so enforce it everywhere instead of chasing it class-by-class. */
+[hidden] {
+  display: none !important;
+}

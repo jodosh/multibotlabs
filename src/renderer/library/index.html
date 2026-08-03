@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>MultiBot Library</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div class="titlebar">
+      <span id="title" class="titlebar-title">Sounds</span>
+      <button id="close-button" class="titlebar-close" title="Close">✕</button>
+    </div>
+
+    <label id="allow-user-list-row" class="checkbox" hidden>
+      <input id="allow-user-list" type="checkbox" /> Let viewers type !commands to see the list
+    </label>
+
+    <div id="tabs" class="tabs">
+      <button id="tab-sounds" class="tab active">Sounds</button>
+      <button id="tab-text" class="tab">Text Replies</button>
+      <button id="tab-intros" class="tab">User Intros</button>
+    </div>
+
+    <section id="sounds-panel">
+      <div class="toolbar">
+        <button id="add-sound-button">+ Add Sound</button>
+        <button id="import-button">Import from old MultiBot</button>
+        <input id="sound-search" class="search" type="search" placeholder="Filter…" />
+      </div>
+      <ul id="sound-list" class="list"></ul>
+    </section>
+
+    <section id="text-panel" hidden>
+      <div class="toolbar">
+        <button id="add-text-button">+ Add Text Reply</button>
+        <input id="text-search" class="search" type="search" placeholder="Filter…" />
+      </div>
+      <ul id="text-list" class="list"></ul>
+    </section>
+
+    <section id="intros-panel" hidden>
+      <div class="toolbar">
+        <button id="add-intro-button">+ Add Intro</button>
+        <label class="checkbox"><input id="enable-intros" type="checkbox" /> Enable !intro command</label>
+        <input id="intro-search" class="search" type="search" placeholder="Filter…" />
+      </div>
+      <ul id="intro-list" class="list"></ul>
+    </section>
+
+    <p id="import-summary"></p>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

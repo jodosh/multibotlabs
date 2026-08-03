@@ -1,0 +1,53 @@
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: var(--color-surface);
+  border: 1px solid var(--color-input-border);
+  border-radius: 8px;
+  padding: 18px;
+  width: 280px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.modal-title {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--color-text);
+}
+
+.modal-input {
+  display: block;
+  width: 100%;
+  margin-bottom: 14px;
+  padding: 6px 8px;
+  box-sizing: border-box;
+  background: var(--color-bg);
+  border: 1px solid var(--color-input-border);
+  color: var(--color-text);
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.modal-cancel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-input-border);
+}
+
+.modal-cancel:hover {
+  background: var(--color-input-border);
+}

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>MultiBot AtMe Queue</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div class="titlebar">
+      <span id="title" class="titlebar-title">AtMe Queue</span>
+      <button id="close-button" class="titlebar-close" title="Close">✕</button>
+    </div>
+
+    <button id="toggles-collapse-button" class="toggles-header">
+      <span id="toggles-collapse-icon">▾</span> Settings
+    </button>
+    <div id="toggles" class="toggles">
+      <label class="checkbox"><input id="match-mentions" type="checkbox" /> Queue @mentions</label>
+      <label class="checkbox"><input id="match-highlights" type="checkbox" /> Queue Highlighted Messages</label>
+    </div>
+
+    <p id="empty-state">Nothing queued.</p>
+    <ul id="queue-list" class="list"></ul>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

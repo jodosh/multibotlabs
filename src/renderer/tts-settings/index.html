@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>MultiBot Text-To-Speech Settings</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div class="titlebar">
+      <span class="titlebar-title">Text-To-Speech Settings</span>
+      <button id="close-button" class="titlebar-close" title="Close">✕</button>
+    </div>
+
+    <label for="min-bits">Minimum bits</label>
+    <input id="min-bits" type="number" min="0" />
+
+    <label for="voice">Voice</label>
+    <select id="voice"></select>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
