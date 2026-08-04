@@ -102,6 +102,24 @@ Issues once this lives in its own repo.
   Apple-specific step still needed even once Windows is signed via SignPath.
 - **ClipManager** — dropped from scope early on (Twitch's clip API changed since the
   old implementation); would need a real redesign if revisited
+- **Open devDependency vulnerabilities (5, per Snyk SCA)** — all dev-tooling only
+  (`electron-vite`/`vite`/`electron-builder`'s own transitive deps), never shipped in
+  the packaged app; all currently blocked from a clean fix, per CLAUDE.md's "no npm
+  overrides" norm:
+  - `esbuild@0.25.12` (critical, SNYK-JS-ESBUILD-17750822) — bundled by
+    `electron-vite@5.0.0` itself, capped by its own `^0.25.11` dependency range even
+    on the latest `6.0.0-beta.1`; the fix (`0.28.1`) isn't reachable by bumping
+    `electron-vite`, only by an override we've ruled out. Re-check next time
+    `electron-vite` cuts a release.
+  - `nanoid@3.3.16` ×2 (high, SNYK-JS-NANOID-18506894/18506897) — pulled in via
+    `vite`→`postcss`. Fix is `nanoid@5.1.16`, which is ESM-only; `postcss` requires
+    it via CJS (`require('nanoid/non-secure')`), so any override breaks every CSS
+    build. Blocked until `postcss` itself moves off CJS or off `nanoid`.
+  - `unzipper@0.12.5` (medium, SNYK-JS-UNZIPPER-18365659) and `inflight@1.0.6`
+    (medium, SNYK-JS-INFLIGHT-6095116) — both via `electron-builder`'s own
+    dependency tree; no fixed version published upstream for either yet.
+  Re-run `snyk_sca_scan` (with `dev: true` — these are all devDependencies, invisible
+  otherwise) periodically to check if any of these gained a real fix upstream.
 
 ## Before the initial commit to a new repo
 
