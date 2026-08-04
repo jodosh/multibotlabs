@@ -4,7 +4,11 @@
   "version": "0.1.0",
   "description": "MultiBot - modular Twitch bot toolkit",
   "license": "MIT",
-  "author": "jodosh",
+  "desktopName": "multibotlabs.desktop",
+  "author": {
+    "name": "jodosh",
+    "email": "7488290+jodosh@users.noreply.github.com"
+  },
   "private": true,
   "main": "./out/main/index.js",
   "scripts": {
@@ -58,7 +62,9 @@
         "deb"
       ],
       "icon": "resources/icon.png",
-      "category": "Utility"
+      "category": "Utility",
+      "synopsis": "Modular Twitch bot toolkit",
+      "syncDesktopName": true
     },
     "mac": {
       "target": [
