@@ -4,13 +4,17 @@
   "version": "0.1.0",
   "description": "MultiBot - modular Twitch bot toolkit",
   "license": "MIT",
+  "author": "jodosh",
   "private": true,
   "main": "./out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "start": "electron-vite preview",
-    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json"
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "dist:win": "electron-vite build && electron-builder --win",
+    "dist:linux": "electron-vite build && electron-builder --linux",
+    "dist:mac": "electron-vite build && electron-builder --mac"
   },
   "dependencies": {
     "ffmpeg-static": "^5.2.0",
@@ -20,6 +24,7 @@
     "@types/node": "^22.10.2",
     "@types/tmi.js": "^1.8.6",
     "electron": "^43.0.0",
+    "electron-builder": "^26.15.3",
     "electron-vite": "^2.3.0",
     "typescript": "^5.7.2",
     "vite": "^5.4.11"
@@ -27,6 +32,53 @@
   "allowScripts": {
     "electron@33.4.11": true,
     "esbuild@0.21.5": true,
-    "ffmpeg-static@5.3.0": true
+    "ffmpeg-static@5.3.0": true,
+    "electron-winstaller@5.4.0": true
+  },
+  "build": {
+    "appId": "com.multibotlabs.multibot",
+    "productName": "multibotlabs",
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "resources",
+        "to": "resources"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "resources/icon.ico"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "resources/icon.png",
+      "category": "Utility"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
+      "icon": "resources/icon.png",
+      "category": "public.app-category.utilities",
+      "identity": null
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "publish": {
+      "provider": "github"
+    }
   }
 }

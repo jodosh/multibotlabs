@@ -762,6 +762,12 @@ function registerIpcHandlers(): void {
 }
 
 app.whenReady().then(async () => {
+  // BrowserWindow's `icon` option (set per-window in windowManager.ts) is
+  // ignored on macOS — the dock icon has to be set here instead.
+  if (process.platform === 'darwin') {
+    app.dock?.setIcon(join(resourcesRoot(), 'icon.png'))
+  }
+
   currentSettings = await settingsStore.load()
   await soundLibrary.load()
   await mediaLibrary.load()

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A cross-platform (Windows + Linux) desktop Twitch bot toolkit — a small always-visible
+A cross-platform (Windows + Linux + macOS/Apple Silicon) desktop Twitch bot toolkit — a small always-visible
 HUD bar that toggles independent bot modules on/off (sound commands, emote-triggered
 sounds, text-to-speech, chat reaction sounds). It's an Electron/TypeScript rewrite of an
 older Windows-only .NET WPF app. Two things shaped the architecture directly:

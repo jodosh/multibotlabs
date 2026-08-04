@@ -58,6 +58,13 @@ Issues once this lives in its own repo.
   Blank tiles were dropped — the original's tiles were narrower than their spacing so
   bare belt showed between all of them anyway, but on a flush strip a blank reads as a
   hole.
+- Packaging/distribution: `electron-builder` builds Windows (NSIS), Linux (AppImage +
+  deb), and macOS/Apple Silicon (dmg) installers, all reading the app icon from
+  `resources/icon.png`/`.ico`. `.github/workflows/release.yml` builds all three on a
+  `windows-latest`/`ubuntu-latest`/`macos-latest` matrix and publishes a draft GitHub
+  Release whenever a `v*` tag is pushed; `.github/workflows/ci.yml` runs `typecheck` on
+  every push/PR to `main`. Binaries are **unsigned** on both Windows and macOS — see
+  the "Not started" code-signing entry below.
 
 ## Not started
 
@@ -80,10 +87,19 @@ Issues once this lives in its own repo.
   `spd-say` directly via `child_process` in the main process (proven to work);
   keep `window.speechSynthesis` on Windows, where it's well-supported via SAPI.
   This means a platform-specific code path, not a config fix.
-- **Windows** — this app has only ever run on Linux so far. Original goal is
-  Windows + Linux; Windows hasn't been tested once
-- **Packaging/distribution** — no installer/binary build pipeline (electron-builder
-  or similar) yet
+- **Windows/macOS runtime testing** — CI now builds installers for both (see
+  Packaging/distribution above), but nobody has actually run the app on real Windows
+  or macOS hardware yet; only Linux has been exercised end-to-end
+- **Code signing (Windows + macOS)** — both platforms' installers are unsigned, so
+  Windows SmartScreen and macOS Gatekeeper both warn on first launch ("Unknown
+  publisher" / "can't be opened"); workaround for now is manual bypass (SmartScreen's
+  "More info → Run anyway", macOS's right-click → Open or `xattr -cr`). Real fix:
+  apply to **SignPath Foundation** (signpath.io) — free OV-level code signing for
+  qualifying open source projects (public repo + OSI-approved license, which this
+  project already satisfies), key held in their HSM, wired into CI signing steps.
+  Review takes days to weeks. Azure Trusted Signing (~$9.99/mo) is a paid fallback if
+  that doesn't pan out. Doesn't cover macOS notarization, which is a separate,
+  Apple-specific step still needed even once Windows is signed via SignPath.
 - **ClipManager** — dropped from scope early on (Twitch's clip API changed since the
   old implementation); would need a real redesign if revisited
 

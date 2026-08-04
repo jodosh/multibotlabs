@@ -1,7 +1,15 @@
-import { BrowserWindow, screen } from 'electron'
+import { app, BrowserWindow, screen } from 'electron'
 import { join } from 'node:path'
 
 const GAP_ABOVE_HUD = 12
+
+// Mirrors index.ts's resourcesRoot() — resources/ sits next to the app root
+// in dev but gets relocated under process.resourcesPath once packaged. Must
+// stay a function, not a top-level constant: `app` isn't populated yet at
+// module-evaluation time, only once these are called during window creation.
+function appIcon(): string {
+  return join(app.isPackaged ? join(process.resourcesPath, 'resources') : join(app.getAppPath(), 'resources'), 'icon.png')
+}
 
 // Opens a window just above the HUD, horizontally centered on it, so the
 // user never has to hunt for where it landed — clamped to the screen's work
@@ -44,6 +52,7 @@ export function createHudWindow(): BrowserWindow {
     transparent: true,
     alwaysOnTop: true,
     skipTaskbar: false,
+    icon: appIcon(),
     webPreferences: {
       preload: join(__dirname, '../preload/hud.js'),
     }
@@ -65,6 +74,7 @@ export function createSettingsWindow(onClose: () => void, hudWindow?: BrowserWin
     resizable: false,
     frame: false,
     title: 'MultiBot Settings',
+    icon: appIcon(),
     ...positionAboveHud(hudWindow, width, height),
     webPreferences: {
       preload: join(__dirname, '../preload/settings.js'),
@@ -92,6 +102,7 @@ export function createLibraryWindow(kind: LibraryWindowKind, onClose: () => void
     height,
     frame: false,
     title: kind === 'command' ? 'MultiBot Command Manager' : 'MultiBot Emote Manager',
+    icon: appIcon(),
     ...positionAboveHud(hudWindow, width, height),
     webPreferences: {
       preload: join(__dirname, '../preload/library.js'),
@@ -115,6 +126,7 @@ export function createTtsSettingsWindow(onClose: () => void, hudWindow?: Browser
     resizable: false,
     frame: false,
     title: 'MultiBot Text-To-Speech Settings',
+    icon: appIcon(),
     ...positionAboveHud(hudWindow, width, height),
     webPreferences: {
       preload: join(__dirname, '../preload/ttsSettings.js'),
@@ -138,6 +150,7 @@ export function createAtMeQueueWindow(onClose: () => void, hudWindow?: BrowserWi
     height,
     frame: false,
     title: 'MultiBot AtMe Queue',
+    icon: appIcon(),
     ...positionAboveHud(hudWindow, width, height),
     webPreferences: {
       preload: join(__dirname, '../preload/atMeQueue.js'),
@@ -159,6 +172,7 @@ export function createMediaWindow(onClose: () => void, hudWindow?: BrowserWindow
     height,
     frame: false,
     title: 'MultiBot Media Manager',
+    icon: appIcon(),
     ...positionAboveHud(hudWindow, width, height),
     webPreferences: {
       preload: join(__dirname, '../preload/mediaLibrary.js'),
@@ -181,6 +195,7 @@ export function createCelebrationWindow(onClose: () => void, hudWindow?: Browser
     resizable: false,
     frame: false,
     title: 'MultiBot Celebration',
+    icon: appIcon(),
     ...positionAboveHud(hudWindow, width, height),
     webPreferences: {
       preload: join(__dirname, '../preload/celebration.js'),
@@ -202,6 +217,7 @@ export function createCoinksWindow(onClose: () => void, hudWindow?: BrowserWindo
     height,
     frame: false,
     title: 'MultiBot Coinks',
+    icon: appIcon(),
     ...positionAboveHud(hudWindow, width, height),
     webPreferences: {
       preload: join(__dirname, '../preload/coinks.js'),
@@ -223,6 +239,7 @@ export function createAuthWindow(hudWindow?: BrowserWindow): BrowserWindow {
     width,
     height,
     title: 'Log in with Twitch',
+    icon: appIcon(),
     ...positionAboveHud(hudWindow, width, height),
     webPreferences: {
     }
