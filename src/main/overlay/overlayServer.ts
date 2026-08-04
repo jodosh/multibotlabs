@@ -236,7 +236,9 @@ export class OverlayServer {
     try {
       const body = await fs.readFile(resolved)
       const contentType = MEDIA_MIME_TYPES[path.extname(resolved).toLowerCase()] ?? 'application/octet-stream'
-      res.writeHead(200, { 'Content-Type': contentType, 'Cache-Control': 'no-cache' }).end(body)
+      res
+        .writeHead(200, { 'Content-Type': contentType, 'Cache-Control': 'no-cache', 'X-Content-Type-Options': 'nosniff' })
+        .end(body)
     } catch {
       res.writeHead(404).end('Not found')
     }
@@ -330,7 +332,7 @@ export class OverlayServer {
     try {
       const body = await fs.readFile(resolved)
       const contentType = STATIC_MIME_TYPES[path.extname(resolved).toLowerCase()] ?? 'application/octet-stream'
-      res.writeHead(200, { 'Content-Type': contentType }).end(body)
+      res.writeHead(200, { 'Content-Type': contentType, 'X-Content-Type-Options': 'nosniff' }).end(body)
     } catch {
       res.writeHead(404).end('Not found')
     }
@@ -376,14 +378,28 @@ export class OverlayServer {
   }
 
   private async proxyToDevServer(req: http.IncomingMessage, res: http.ServerResponse, devServerUrl: string): Promise<void> {
-    const target = new URL(req.url ?? '/', devServerUrl)
+    const requestUrl = req.url ?? '/'
+    // `req.url` is expected to be origin-relative. Reject absolute-form
+    // request targets (`GET http://evil:9999/x HTTP/1.1`) outright — parsing
+    // one with `devServerUrl` as base would let it override the host/port we
+    // proxy to, turning this loopback proxy into an open port-forwarder.
+    if (!requestUrl.startsWith('/')) {
+      res.writeHead(400).end('Bad Request')
+      return
+    }
+
+    const devPort = new URL(devServerUrl).port
+    const target = new URL(requestUrl, devServerUrl)
     // Vite serves `/overlay/` but 404s on `/overlay` — normalize so a browser
     // source URL typed without the trailing slash still works, for any page.
     const pathname = /^\/[^/.]+$/.test(target.pathname) ? `${target.pathname}/` : target.pathname
     const host = await this.resolveDevHost(devServerUrl)
 
     const proxied = http.request(
-      { host, port: target.port, path: pathname + target.search, method: req.method, headers: req.headers },
+      // Host and port always come from the trusted `devServerUrl`, never from
+      // `target` — only the path/query are taken from the (already-validated
+      // origin-relative) request.
+      { host, port: devPort, path: pathname + target.search, method: req.method, headers: req.headers },
       (proxyRes) => {
         res.writeHead(proxyRes.statusCode ?? 502, proxyRes.headers)
         proxyRes.pipe(res)

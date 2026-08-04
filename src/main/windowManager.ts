@@ -46,7 +46,6 @@ export function createHudWindow(): BrowserWindow {
     skipTaskbar: false,
     webPreferences: {
       preload: join(__dirname, '../preload/hud.js'),
-      sandbox: false
     }
   })
   loadRenderer(win, 'hud')
@@ -69,7 +68,6 @@ export function createSettingsWindow(onClose: () => void, hudWindow?: BrowserWin
     ...positionAboveHud(hudWindow, width, height),
     webPreferences: {
       preload: join(__dirname, '../preload/settings.js'),
-      sandbox: false
     }
   })
   win.on('closed', onClose)
@@ -97,7 +95,6 @@ export function createLibraryWindow(kind: LibraryWindowKind, onClose: () => void
     ...positionAboveHud(hudWindow, width, height),
     webPreferences: {
       preload: join(__dirname, '../preload/library.js'),
-      sandbox: false
     }
   })
   win.on('closed', onClose)
@@ -121,7 +118,6 @@ export function createTtsSettingsWindow(onClose: () => void, hudWindow?: Browser
     ...positionAboveHud(hudWindow, width, height),
     webPreferences: {
       preload: join(__dirname, '../preload/ttsSettings.js'),
-      sandbox: false
     }
   })
   win.on('closed', onClose)
@@ -145,7 +141,6 @@ export function createAtMeQueueWindow(onClose: () => void, hudWindow?: BrowserWi
     ...positionAboveHud(hudWindow, width, height),
     webPreferences: {
       preload: join(__dirname, '../preload/atMeQueue.js'),
-      sandbox: false
     }
   })
   win.on('closed', onClose)
@@ -167,7 +162,6 @@ export function createMediaWindow(onClose: () => void, hudWindow?: BrowserWindow
     ...positionAboveHud(hudWindow, width, height),
     webPreferences: {
       preload: join(__dirname, '../preload/mediaLibrary.js'),
-      sandbox: false
     }
   })
   win.on('closed', onClose)
@@ -190,7 +184,6 @@ export function createCelebrationWindow(onClose: () => void, hudWindow?: Browser
     ...positionAboveHud(hudWindow, width, height),
     webPreferences: {
       preload: join(__dirname, '../preload/celebration.js'),
-      sandbox: false
     }
   })
   win.on('closed', onClose)
@@ -212,7 +205,6 @@ export function createCoinksWindow(onClose: () => void, hudWindow?: BrowserWindo
     ...positionAboveHud(hudWindow, width, height),
     webPreferences: {
       preload: join(__dirname, '../preload/coinks.js'),
-      sandbox: false
     }
   })
   win.on('closed', onClose)
@@ -233,7 +225,6 @@ export function createAuthWindow(hudWindow?: BrowserWindow): BrowserWindow {
     title: 'Log in with Twitch',
     ...positionAboveHud(hudWindow, width, height),
     webPreferences: {
-      sandbox: false
     }
   })
 }
@@ -246,7 +237,6 @@ export function createPlaybackWindow(): BrowserWindow {
     skipTaskbar: true,
     webPreferences: {
       preload: join(__dirname, '../preload/playback.js'),
-      sandbox: false,
       // Chromium deprioritizes timers/resource loading for hidden renderers
       // by default. This window is permanently show:false, so without this
       // it's always "backgrounded" — causing intermittent audio load
