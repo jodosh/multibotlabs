@@ -32,6 +32,23 @@ Run from `app/`:
 
 There is no test suite or linter configured yet.
 
+## Dependencies
+
+**Never use npm `overrides` to force a transitive dependency to a version its
+parent doesn't declare support for** — resolve vulnerabilities and version
+conflicts by bumping the actual direct dependency instead, even if that means
+a bigger jump or waiting on an upstream fix. This bit us concretely: a Snyk
+scan flagged `nanoid@3.3.16` (pulled in transitively via `vite`'s `postcss`
+dependency), and forcing an override to the fixed `nanoid@5.1.16` would have
+broken every CSS build in the app — `postcss` does a plain CJS
+`require('nanoid/non-secure')`, and `nanoid@5.1.16` ships **no CJS entry at
+all** (ESM-only, no `require` export condition), so it would fail with
+`ERR_REQUIRE_ESM` the instant PostCSS parsed any stylesheet. An override
+would have installed silently and only surfaced the breakage at
+build/runtime, well past the point where the version choice was made. If a
+transitive vulnerability has no fix reachable by bumping the direct
+dependency, it stays open (documented in `ROADMAP.md`) rather than forced.
+
 ## Architecture
 
 ### Process/window layout
