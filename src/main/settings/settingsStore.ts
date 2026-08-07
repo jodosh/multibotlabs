@@ -13,6 +13,10 @@ export interface AppSettings {
     order: string[] // module ids, HUD display order
     hidden: string[] // module ids hidden from the HUD
   }
+  legacyImport: {
+    soundsImported: boolean // commands.json/emotes.json/commands_text.json already imported
+    mediaImported: boolean // gifMediaCommands.json already imported
+  }
   modules: {
     textToSpeech: {
       enabled: boolean
@@ -67,6 +71,10 @@ export const defaultSettings: AppSettings = {
   bots: {
     order: ['live-studio-audience', 'text-to-speech', 'command', 'emote'],
     hidden: []
+  },
+  legacyImport: {
+    soundsImported: false,
+    mediaImported: false
   },
   modules: {
     textToSpeech: {
@@ -131,6 +139,7 @@ export class SettingsStore {
       this.cache = {
         twitch: { ...defaultSettings.twitch, ...parsed.twitch },
         bots: { ...defaultSettings.bots, ...parsed.bots },
+        legacyImport: { ...defaultSettings.legacyImport, ...parsed.legacyImport },
         modules: {
           textToSpeech: { ...defaultSettings.modules.textToSpeech, ...parsed.modules?.textToSpeech },
           liveStudioAudience: { ...defaultSettings.modules.liveStudioAudience, ...parsed.modules?.liveStudioAudience },

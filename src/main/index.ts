@@ -27,7 +27,7 @@ import { SettingsStore, type AppSettings } from './settings/settingsStore'
 import { SoundLibrary } from './library/soundLibrary'
 import { MediaLibrary, SUPPORTED_MEDIA_EXTENSIONS, type MediaTrigger } from './library/mediaLibrary'
 import { PlaybackQueue } from './library/playbackQueue'
-import { importLegacyData } from './library/legacyImport'
+import { importLegacyData, legacyDataExists } from './library/legacyImport'
 import { OverlayServer } from './overlay/overlayServer'
 import { CoinksScores } from './library/coinksScores'
 import * as twitchAuth from './auth/twitchAuth'
@@ -567,6 +567,30 @@ function registerIpcHandlers(): void {
     broadcastModules()
   })
 
+  // Backs the "Import from old MultiBot" section: the section itself only
+  // renders when the old .NET app's data directory exists, and each of its
+  // two rows (sounds/text vs. media) drops off independently once that
+  // import has actually been run, so re-running it can't duplicate entries.
+  ipcMain.handle('settings:get-legacy-import-status', async () => ({
+    dirExists: await legacyDataExists(),
+    soundsImported: currentSettings.legacyImport.soundsImported,
+    mediaImported: currentSettings.legacyImport.mediaImported
+  }))
+
+  ipcMain.handle('settings:import-legacy-sounds', async () => {
+    const summary = await importLegacyData(soundLibrary)
+    currentSettings.legacyImport.soundsImported = true
+    await settingsStore.save(currentSettings)
+    return summary
+  })
+
+  ipcMain.handle('settings:import-legacy-media', async () => {
+    const summary = await mediaLibrary.importLegacy()
+    currentSettings.legacyImport.mediaImported = true
+    await settingsStore.save(currentSettings)
+    return summary
+  })
+
   ipcMain.handle('tts-settings:get', () => currentSettings.modules.textToSpeech)
 
   ipcMain.handle(
@@ -648,8 +672,6 @@ function registerIpcHandlers(): void {
     await settingsStore.save(currentSettings)
   })
 
-  ipcMain.handle('library:import-legacy', () => importLegacyData(soundLibrary))
-
   ipcMain.handle('atme:get-settings', () => ({
     matchMentions: currentSettings.modules.atMe.matchMentions,
     matchHighlights: currentSettings.modules.atMe.matchHighlights,
@@ -700,8 +722,6 @@ function registerIpcHandlers(): void {
     const entry = mediaLibrary.get(id)
     if (entry) playMedia(entry)
   })
-
-  ipcMain.handle('media:import-legacy', () => mediaLibrary.importLegacy())
 
   ipcMain.handle('media:overlay-status', () => overlayStatus())
 

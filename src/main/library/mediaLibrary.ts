@@ -3,6 +3,7 @@ import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import type { MediaAnchor, MediaElementKind } from '../overlay/types'
+import { legacyDataDir } from './legacyImport'
 
 export interface MediaTrigger {
   id: string
@@ -121,8 +122,7 @@ export class MediaLibrary {
   // legacyImport.ts: %APPDATA%\MultiBot on Windows, naturally a no-op elsewhere
   // since the old app never ran on Linux/macOS.
   async importLegacy(): Promise<MediaImportSummary> {
-    const legacyRoot = path.join(app.getPath('appData'), 'MultiBot')
-    const entries = await readJsonArray<LegacyGifMedia>(path.join(legacyRoot, 'gifMediaCommands.json'))
+    const entries = await readJsonArray<LegacyGifMedia>(path.join(legacyDataDir(), 'gifMediaCommands.json'))
     const skipped: string[] = []
     let imported = 0
 

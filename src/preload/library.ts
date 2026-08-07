@@ -17,12 +17,6 @@ export interface TextReplyDto {
   reply: string
 }
 
-export interface ImportSummaryDto {
-  importedSounds: number
-  importedTextReplies: number
-  skipped: string[]
-}
-
 const libraryApi = {
   listSounds: (kind: SoundTriggerKind): Promise<SoundTriggerDto[]> => ipcRenderer.invoke('library:list-sounds', kind),
   addSoundFromDialog: (kind: SoundTriggerKind, trigger: string, volume: number): Promise<SoundTriggerDto | null> =>
@@ -44,8 +38,6 @@ const libraryApi = {
 
   getUserIntrosEnabled: (): Promise<boolean> => ipcRenderer.invoke('library:get-user-intros-enabled'),
   setUserIntrosEnabled: (value: boolean): Promise<void> => ipcRenderer.invoke('library:set-user-intros-enabled', value),
-
-  importLegacy: (): Promise<ImportSummaryDto> => ipcRenderer.invoke('library:import-legacy'),
 
   close: (): void => ipcRenderer.send('window:close')
 }

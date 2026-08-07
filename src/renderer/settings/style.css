@@ -111,3 +111,7 @@ button:disabled {
 .checkbox input {
   margin: 0;
 }
+
+#legacy-import-summary {
+  margin-top: 10px;
+}

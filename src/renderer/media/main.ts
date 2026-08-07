@@ -21,8 +21,6 @@ const ANCHORS: MediaAnchor[] = [
 
 const closeButton = document.getElementById('close-button') as HTMLButtonElement
 const addButton = document.getElementById('add-button') as HTMLButtonElement
-const importButton = document.getElementById('import-button') as HTMLButtonElement
-const importSummary = document.getElementById('import-summary') as HTMLParagraphElement
 const searchInput = document.getElementById('search') as HTMLInputElement
 const emptyState = document.getElementById('empty-state') as HTMLParagraphElement
 const mediaList = document.getElementById('media-list') as HTMLUListElement
@@ -163,15 +161,6 @@ addButton.addEventListener('click', () => {
       return undefined
     })
     .catch((error: unknown) => alertModal(`Could not add media: ${error instanceof Error ? error.message : String(error)}`))
-})
-
-importButton.addEventListener('click', () => {
-  importButton.disabled = true
-  void window.mediaLibrary.importLegacy().then(async (summary) => {
-    const skippedNote = summary.skipped.length > 0 ? ` Skipped ${summary.skipped.length}: ${summary.skipped.join('; ')}` : ''
-    importSummary.textContent = `Imported ${summary.imported} item(s).${skippedNote}`
-    await load()
-  })
 })
 
 copyUrlButton.addEventListener('click', () => {

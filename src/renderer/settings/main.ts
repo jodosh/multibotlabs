@@ -1,4 +1,4 @@
-import type { SettingsApi, AuthStatus, BotSummary } from '../../preload/settings'
+import type { SettingsApi, AuthStatus, BotSummary, LegacyImportStatus } from '../../preload/settings'
 
 declare global {
   interface Window {
@@ -10,6 +10,12 @@ const closeButton = document.getElementById('close-button') as HTMLButtonElement
 const twitchStatus = document.getElementById('twitch-status') as HTMLSpanElement
 const twitchActionButton = document.getElementById('twitch-action-button') as HTMLButtonElement
 const botList = document.getElementById('bot-list') as HTMLUListElement
+const legacyImportSection = document.getElementById('legacy-import-section') as HTMLElement
+const legacySoundsRow = document.getElementById('legacy-sounds-row') as HTMLLIElement
+const legacyMediaRow = document.getElementById('legacy-media-row') as HTMLLIElement
+const importSoundsButton = document.getElementById('import-sounds-button') as HTMLButtonElement
+const importMediaButton = document.getElementById('import-media-button') as HTMLButtonElement
+const legacyImportSummary = document.getElementById('legacy-import-summary') as HTMLParagraphElement
 
 closeButton.addEventListener('click', () => {
   window.settingsApi.close()
@@ -114,5 +120,46 @@ async function loadAuthStatus(): Promise<void> {
   renderAuthStatus(await window.settingsApi.getAuthStatus())
 }
 
+function renderLegacyImportStatus(status: LegacyImportStatus): void {
+  // No old-app data directory on this machine at all — nothing to offer.
+  if (!status.dirExists) {
+    legacyImportSection.hidden = true
+    return
+  }
+
+  legacySoundsRow.hidden = status.soundsImported
+  legacyMediaRow.hidden = status.mediaImported
+  // Both already imported: nothing left to show, so drop the whole section
+  // rather than leaving a header with two hidden rows under it.
+  legacyImportSection.hidden = status.soundsImported && status.mediaImported
+}
+
+async function loadLegacyImportStatus(): Promise<void> {
+  renderLegacyImportStatus(await window.settingsApi.getLegacyImportStatus())
+}
+
+importSoundsButton.addEventListener('click', () => {
+  void (async () => {
+    importSoundsButton.disabled = true
+    const summary = await window.settingsApi.importLegacySounds()
+    const skippedNote = summary.skipped.length > 0 ? ` Skipped ${summary.skipped.length}: ${summary.skipped.join('; ')}` : ''
+    legacyImportSummary.textContent = `Imported ${summary.importedSounds} sound(s), ${summary.importedTextReplies} text repl${
+      summary.importedTextReplies === 1 ? 'y' : 'ies'
+    }.${skippedNote}`
+    await loadLegacyImportStatus()
+  })()
+})
+
+importMediaButton.addEventListener('click', () => {
+  void (async () => {
+    importMediaButton.disabled = true
+    const summary = await window.settingsApi.importLegacyMedia()
+    const skippedNote = summary.skipped.length > 0 ? ` Skipped ${summary.skipped.length}: ${summary.skipped.join('; ')}` : ''
+    legacyImportSummary.textContent = `Imported ${summary.imported} media item(s).${skippedNote}`
+    await loadLegacyImportStatus()
+  })()
+})
+
 void loadAuthStatus()
 void loadBots()
+void loadLegacyImportStatus()

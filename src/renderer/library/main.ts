@@ -26,8 +26,6 @@ const introList = document.getElementById('intro-list') as HTMLUListElement
 const addSoundButton = document.getElementById('add-sound-button') as HTMLButtonElement
 const addTextButton = document.getElementById('add-text-button') as HTMLButtonElement
 const addIntroButton = document.getElementById('add-intro-button') as HTMLButtonElement
-const importButton = document.getElementById('import-button') as HTMLButtonElement
-const importSummary = document.getElementById('import-summary') as HTMLParagraphElement
 const allowUserListInput = document.getElementById('allow-user-list') as HTMLInputElement
 const enableIntrosInput = document.getElementById('enable-intros') as HTMLInputElement
 const soundSearchInput = document.getElementById('sound-search') as HTMLInputElement
@@ -285,22 +283,9 @@ async function addIntro(): Promise<void> {
   }
 }
 
-async function runImport(): Promise<void> {
-  importButton.disabled = true
-  const summary = await window.library.importLegacy()
-  const skippedNote = summary.skipped.length > 0 ? ` Skipped ${summary.skipped.length}: ${summary.skipped.join('; ')}` : ''
-  importSummary.textContent = `Imported ${summary.importedSounds} sound(s), ${summary.importedTextReplies} text repl${
-    summary.importedTextReplies === 1 ? 'y' : 'ies'
-  }.${skippedNote}`
-
-  await loadSounds()
-  if (kind === 'command') await loadTextReplies()
-}
-
 addSoundButton.addEventListener('click', () => void addSound())
 addTextButton.addEventListener('click', () => void addTextReply())
 addIntroButton.addEventListener('click', () => void addIntro())
-importButton.addEventListener('click', () => void runImport())
 
 if (kind === 'command') {
   allowUserListRow.hidden = false

@@ -61,12 +61,30 @@ async function importSounds(
   return imported
 }
 
+// Shared by the sound and media importers, and by the Settings window to
+// decide whether the "Import from old MultiBot" section is worth showing
+// at all — on a machine that never ran the old .NET app, this is always
+// false and the section stays hidden rather than offering a button that
+// would just report zero imports.
+export function legacyDataDir(): string {
+  return path.join(app.getPath('appData'), 'MultiBot')
+}
+
+export async function legacyDataExists(): Promise<boolean> {
+  try {
+    const stat = await fs.stat(legacyDataDir())
+    return stat.isDirectory()
+  } catch {
+    return false
+  }
+}
+
 // Looks for the old .NET app's data directory — %APPDATA%\MultiBot on
 // Windows, matching where it actually wrote commands.json/emotes.json. On
 // Linux/macOS this naturally finds nothing, since the old app never ran
 // there, so no platform branching is needed.
 export async function importLegacyData(library: SoundLibrary): Promise<ImportSummary> {
-  const legacyRoot = path.join(app.getPath('appData'), 'MultiBot')
+  const legacyRoot = legacyDataDir()
   const skipped: string[] = []
 
   const importedSounds =

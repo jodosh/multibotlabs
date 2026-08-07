@@ -37,18 +37,12 @@ export interface OverlayStatusDto {
   error?: string
 }
 
-export interface MediaImportSummaryDto {
-  imported: number
-  skipped: string[]
-}
-
 const mediaLibraryApi = {
   list: (): Promise<MediaTriggerDto[]> => ipcRenderer.invoke('media:list'),
   addFromDialog: (): Promise<MediaTriggerDto[]> => ipcRenderer.invoke('media:add-from-dialog'),
   update: (id: string, patch: MediaTriggerPatch): Promise<void> => ipcRenderer.invoke('media:update', id, patch),
   remove: (id: string): Promise<void> => ipcRenderer.invoke('media:remove', id),
   test: (id: string): Promise<void> => ipcRenderer.invoke('media:test', id),
-  importLegacy: (): Promise<MediaImportSummaryDto> => ipcRenderer.invoke('media:import-legacy'),
 
   getOverlayStatus: (): Promise<OverlayStatusDto> => ipcRenderer.invoke('media:overlay-status'),
   setPort: (port: number): Promise<OverlayStatusDto> => ipcRenderer.invoke('media:set-port', port),

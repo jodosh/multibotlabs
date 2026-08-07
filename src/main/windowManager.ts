@@ -66,7 +66,7 @@ export function createHudWindow(): BrowserWindow {
 // there's no OS-provided one.
 export function createSettingsWindow(onClose: () => void, hudWindow?: BrowserWindow): BrowserWindow {
   const width = 480
-  const height = 480
+  const height = 560
 
   const win = new BrowserWindow({
     width,
