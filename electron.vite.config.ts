@@ -25,7 +25,8 @@ export default defineConfig({
           atMeQueue: resolve(__dirname, 'src/preload/atMeQueue.ts'),
           mediaLibrary: resolve(__dirname, 'src/preload/mediaLibrary.ts'),
           celebration: resolve(__dirname, 'src/preload/celebration.ts'),
-          coinks: resolve(__dirname, 'src/preload/coinks.ts')
+          coinks: resolve(__dirname, 'src/preload/coinks.ts'),
+          hypeTrain: resolve(__dirname, 'src/preload/hypeTrain.ts')
         }
       }
     }
@@ -48,7 +49,9 @@ export default defineConfig({
           overlay: resolve(__dirname, 'src/renderer/overlay/index.html'),
           'overlay-fireworks': resolve(__dirname, 'src/renderer/overlay-fireworks/index.html'),
           coinks: resolve(__dirname, 'src/renderer/coinks/index.html'),
-          'overlay-coinks': resolve(__dirname, 'src/renderer/overlay-coinks/index.html')
+          'overlay-coinks': resolve(__dirname, 'src/renderer/overlay-coinks/index.html'),
+          hypetrain: resolve(__dirname, 'src/renderer/hypetrain/index.html'),
+          'overlay-hypetrain': resolve(__dirname, 'src/renderer/overlay-hypetrain/index.html')
         }
       }
     }

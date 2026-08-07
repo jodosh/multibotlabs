@@ -67,7 +67,8 @@ export class OverlayServer {
     private readonly resolveMedia: (id: string) => MediaSource | undefined,
     private readonly onClientsChanged: (count: number) => void,
     private readonly onCoinksResult: (result: CoinksResult) => void = () => {},
-    private readonly gameAssetsRoot: () => string = () => ''
+    private readonly gameAssetsRoot: () => string = () => '',
+    private readonly hypeAssetsRoot: () => string = () => ''
   ) {}
 
   get status(): OverlayServerStatus {
@@ -159,7 +160,8 @@ export class OverlayServer {
     if (url.pathname === '/events') return this.handleEvents(req, res, url.searchParams.get('feature') ?? '')
     if (url.pathname === '/coinks/result' && req.method === 'POST') return this.handleCoinksResult(req, res)
     if (url.pathname.startsWith('/media/')) return this.handleMedia(url.pathname.slice('/media/'.length), req, res)
-    if (url.pathname.startsWith('/game/')) return this.serveGameAsset(url.pathname.slice('/game/'.length), res)
+    if (url.pathname.startsWith('/game/')) return this.serveResourceAsset(this.gameAssetsRoot(), url.pathname.slice('/game/'.length), res)
+    if (url.pathname.startsWith('/hype/')) return this.serveResourceAsset(this.hypeAssetsRoot(), url.pathname.slice('/hype/'.length), res)
 
     // Everything else is the overlay page and its bundled assets. In dev that
     // lives on Vite's server, so proxy rather than reading from out/renderer
@@ -223,10 +225,12 @@ export class OverlayServer {
     }
   }
 
-  // The coin game's sprites and sounds, served from resources/ rather than
-  // bundled into the page so the overlay stays a plain static build.
-  private async serveGameAsset(name: string, res: http.ServerResponse): Promise<void> {
-    const root = path.resolve(this.gameAssetsRoot())
+  // Sprites/sounds served straight from resources/ rather than bundled into
+  // the page, so the overlay stays a plain static build. Shared by both the
+  // coin game (/game/) and the Hype Train battle (/hype/) — same pattern,
+  // different resource root.
+  private async serveResourceAsset(assetsRoot: string, name: string, res: http.ServerResponse): Promise<void> {
+    const root = path.resolve(assetsRoot)
     const resolved = path.resolve(root, decodeURIComponent(name))
     if (!resolved.startsWith(root + path.sep)) {
       res.writeHead(403).end('Forbidden')

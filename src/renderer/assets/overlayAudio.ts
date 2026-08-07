@@ -145,4 +145,107 @@ export class OverlayAudio {
     crackle.start(now + 0.05)
     crackle.stop(now + 1.1)
   }
+
+  /** Quick plucked twang — an archer loosing an arrow. */
+  archerShot(gain = 0.3): void {
+    const ctx = this.context()
+    if (!ctx || !this.master) return
+    const now = ctx.currentTime
+
+    const osc = ctx.createOscillator()
+    osc.type = 'triangle'
+    osc.frequency.setValueAtTime(900, now)
+    osc.frequency.exponentialRampToValueAtTime(220, now + 0.09)
+
+    const envelope = ctx.createGain()
+    envelope.gain.setValueAtTime(gain, now)
+    envelope.gain.exponentialRampToValueAtTime(0.0001, now + 0.1)
+
+    osc.connect(envelope).connect(this.master)
+    osc.start(now)
+    osc.stop(now + 0.12)
+  }
+
+  /** Short percussive thud — an arrow landing on the troll. */
+  trollHit(gain = 0.25): void {
+    const ctx = this.context()
+    const noise = this.noiseBuffer(0.2)
+    if (!ctx || !noise || !this.master) return
+    const now = ctx.currentTime
+
+    const source = ctx.createBufferSource()
+    source.buffer = noise
+    const low = ctx.createBiquadFilter()
+    low.type = 'lowpass'
+    low.frequency.setValueAtTime(500, now)
+    low.frequency.exponentialRampToValueAtTime(120, now + 0.15)
+
+    const envelope = ctx.createGain()
+    envelope.gain.setValueAtTime(gain, now)
+    envelope.gain.exponentialRampToValueAtTime(0.0001, now + 0.18)
+
+    source.connect(low).connect(envelope).connect(this.master)
+    source.start(now)
+    source.stop(now + 0.2)
+  }
+
+  /** Rising four-note fanfare — a Hype Train level-up. */
+  levelUp(gain = 0.6): void {
+    const ctx = this.context()
+    const master = this.master
+    if (!ctx || !master) return
+    const now = ctx.currentTime
+
+    const notes = [440, 554, 659, 880]
+    notes.forEach((freq, i) => {
+      const start = now + i * 0.08
+      const osc = ctx.createOscillator()
+      osc.type = 'square'
+      osc.frequency.setValueAtTime(freq, start)
+
+      const envelope = ctx.createGain()
+      envelope.gain.setValueAtTime(0.0001, start)
+      envelope.gain.exponentialRampToValueAtTime(gain * 0.5, start + 0.02)
+      envelope.gain.exponentialRampToValueAtTime(0.0001, start + 0.25)
+
+      osc.connect(envelope).connect(master)
+      osc.start(start)
+      osc.stop(start + 0.28)
+    })
+  }
+
+  /** Descending groan plus a low rumble — the troll is defeated. */
+  trollDefeated(gain = 0.7): void {
+    const ctx = this.context()
+    const noise = this.noiseBuffer(1.2)
+    if (!ctx || !noise || !this.master) return
+    const now = ctx.currentTime
+
+    const osc = ctx.createOscillator()
+    osc.type = 'sawtooth'
+    osc.frequency.setValueAtTime(220, now)
+    osc.frequency.exponentialRampToValueAtTime(60, now + 1.0)
+
+    const oscEnvelope = ctx.createGain()
+    oscEnvelope.gain.setValueAtTime(gain * 0.6, now)
+    oscEnvelope.gain.exponentialRampToValueAtTime(0.0001, now + 1.1)
+
+    osc.connect(oscEnvelope).connect(this.master)
+    osc.start(now)
+    osc.stop(now + 1.1)
+
+    const rumble = ctx.createBufferSource()
+    rumble.buffer = noise
+    const low = ctx.createBiquadFilter()
+    low.type = 'lowpass'
+    low.frequency.value = 200
+
+    const rumbleEnvelope = ctx.createGain()
+    rumbleEnvelope.gain.setValueAtTime(gain * 0.4, now)
+    rumbleEnvelope.gain.exponentialRampToValueAtTime(0.0001, now + 1.2)
+
+    rumble.connect(low).connect(rumbleEnvelope).connect(this.master)
+    rumble.start(now)
+    rumble.stop(now + 1.2)
+  }
 }

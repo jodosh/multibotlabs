@@ -63,11 +63,51 @@ export interface CoinksResult {
   score: number
 }
 
+export interface HypeTrainBeginEvent {
+  type: 'hypetrain:begin'
+  level: number
+  progress: number
+  goal: number
+  /** 0-1. Carried on the event so the overlay needs no config endpoint. */
+  volume: number
+}
+
+export interface HypeTrainArcherJoinEvent {
+  type: 'hypetrain:archer-join'
+  userName: string
+}
+
+export interface HypeTrainProgressEvent {
+  type: 'hypetrain:progress'
+  level: number
+  progress: number
+  goal: number
+}
+
+export interface HypeTrainLevelUpEvent {
+  type: 'hypetrain:level-up'
+  level: number
+}
+
+export interface HypeTrainEndEvent {
+  type: 'hypetrain:end'
+  won: boolean
+}
+
 // Namespaced by feature so each overlay page can filter the shared SSE stream
 // down to what it renders, and so future overlays (Coniks) extend this union
 // rather than inventing another transport.
-export type OverlayEvent = MediaPlayEvent | FireworksShowEvent | CoinksStartEvent | CoinksThrowEvent
+export type OverlayEvent =
+  | MediaPlayEvent
+  | FireworksShowEvent
+  | CoinksStartEvent
+  | CoinksThrowEvent
+  | HypeTrainBeginEvent
+  | HypeTrainArcherJoinEvent
+  | HypeTrainProgressEvent
+  | HypeTrainLevelUpEvent
+  | HypeTrainEndEvent
 
 // Which overlay page a client is; used to scope SSE client counts so each
 // manager window reports only its own source being connected.
-export type OverlayFeature = 'media' | 'fireworks' | 'coinks'
+export type OverlayFeature = 'media' | 'fireworks' | 'coinks' | 'hype-train'

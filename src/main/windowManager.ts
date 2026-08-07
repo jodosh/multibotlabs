@@ -228,6 +228,31 @@ export function createCoinksWindow(onClose: () => void, hudWindow?: BrowserWindo
   return win
 }
 
+// Opened via right-click on the Hype Train HUD tile. Small fixed form like
+// Celebration's — the battle itself renders in OBS, not here. No bits-price
+// row: unlike Celebration/Coinks this bot isn't chat/bits-triggered, it's
+// driven entirely by Twitch's own Hype Train detection over EventSub.
+export function createHypeTrainWindow(onClose: () => void, hudWindow?: BrowserWindow): BrowserWindow {
+  const width = 480
+  const height = 420
+
+  const win = new BrowserWindow({
+    width,
+    height,
+    resizable: false,
+    frame: false,
+    title: 'MultiBot Hype Train',
+    icon: appIcon(),
+    ...positionAboveHud(hudWindow, width, height),
+    webPreferences: {
+      preload: join(__dirname, '../preload/hypeTrain.js'),
+    }
+  })
+  win.on('closed', onClose)
+  loadRenderer(win, 'hypetrain')
+  return win
+}
+
 // Shows Twitch's own login/authorize page for the OAuth implicit-grant flow.
 // No preload — the main process intercepts the redirect via webContents
 // navigation events, not renderer JS, so there's no need for an API bridge.

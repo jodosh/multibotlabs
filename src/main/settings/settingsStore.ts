@@ -58,6 +58,10 @@ export interface AppSettings {
       coinsPerGame: number
       volume: number
     }
+    hypeTrain: {
+      enabled: boolean
+      volume: number
+    }
   }
 }
 
@@ -116,6 +120,10 @@ export const defaultSettings: AppSettings = {
       commandEnabled: true,
       coinsPerGame: 5,
       volume: 0.6
+    },
+    hypeTrain: {
+      enabled: false,
+      volume: 0.6
     }
   }
 }
@@ -148,7 +156,8 @@ export class SettingsStore {
           atMe: { ...defaultSettings.modules.atMe, ...parsed.modules?.atMe },
           mediaGif: { ...defaultSettings.modules.mediaGif, ...parsed.modules?.mediaGif },
           celebration: { ...defaultSettings.modules.celebration, ...parsed.modules?.celebration },
-          coinks: { ...defaultSettings.modules.coinks, ...parsed.modules?.coinks }
+          coinks: { ...defaultSettings.modules.coinks, ...parsed.modules?.coinks },
+          hypeTrain: { ...defaultSettings.modules.hypeTrain, ...parsed.modules?.hypeTrain }
         }
       }
     } catch {

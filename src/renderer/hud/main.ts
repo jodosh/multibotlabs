@@ -9,7 +9,16 @@ declare global {
 // Modules with a dedicated management window, opened via right-click. The
 // window kind isn't needed here — main process resolves it from the id — but
 // having this map keeps the "does this tile have one" check in one place.
-const MODULES_WITH_MANAGER_WINDOW = new Set(['command', 'emote', 'text-to-speech', 'at-me', 'media-gif', 'celebration', 'coinks'])
+const MODULES_WITH_MANAGER_WINDOW = new Set([
+  'command',
+  'emote',
+  'text-to-speech',
+  'at-me',
+  'media-gif',
+  'celebration',
+  'coinks',
+  'hype-train'
+])
 
 const barElement = document.getElementById('bar') as HTMLDivElement
 const tilesContainer = document.getElementById('tiles') as HTMLDivElement

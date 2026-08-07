@@ -11,6 +11,7 @@ import {
   createMediaWindow,
   createCelebrationWindow,
   createCoinksWindow,
+  createHypeTrainWindow,
   type LibraryWindowKind
 } from './windowManager'
 import { ModuleManager } from './modules/moduleManager'
@@ -23,6 +24,8 @@ import { AtMeModule, type AtMeQueueItem } from './modules/atMeModule'
 import { MediaGifModule } from './modules/mediaGifModule'
 import { CelebrationModule } from './modules/celebrationModule'
 import { CoinksModule, type CoinksState } from './modules/coinksModule'
+import { HypeTrainModule, type HypeTrainBattleEvent } from './modules/hypeTrainModule'
+import { HypeTrainEventSub } from './twitch/hypeTrainEventSub'
 import { SettingsStore, type AppSettings } from './settings/settingsStore'
 import { SoundLibrary } from './library/soundLibrary'
 import { MediaLibrary, SUPPORTED_MEDIA_EXTENSIONS, type MediaTrigger } from './library/mediaLibrary'
@@ -65,6 +68,7 @@ let atMeQueueWindow: BrowserWindow | undefined
 let mediaWindow: BrowserWindow | undefined
 let celebrationWindow: BrowserWindow | undefined
 let coinksWindow: BrowserWindow | undefined
+let hypeTrainWindow: BrowserWindow | undefined
 const libraryWindows: Partial<Record<LibraryWindowKind, BrowserWindow>> = {}
 
 const settingsStore = new SettingsStore()
@@ -74,6 +78,7 @@ const soundLibrary = new SoundLibrary()
 const mediaLibrary = new MediaLibrary()
 const playbackQueue = new PlaybackQueue()
 const coinksScores = new CoinksScores()
+const hypeTrainEventSub = new HypeTrainEventSub()
 
 // Renderer output root, used by the overlay server to serve the OBS page in
 // production. In dev it proxies to Vite instead and this is never read.
@@ -85,6 +90,10 @@ function gameAssetsRoot(): string {
   return join(resourcesRoot(), 'coinks')
 }
 
+function hypeAssetsRoot(): string {
+  return join(resourcesRoot(), 'hype')
+}
+
 const overlayServer = new OverlayServer(
   rendererRoot,
   (id) => mediaLibrary.get(id),
@@ -92,17 +101,20 @@ const overlayServer = new OverlayServer(
     broadcastOverlayStatus()
     broadcastCelebrationOverlayStatus()
     broadcastCoinksOverlayStatus()
+    broadcastHypeTrainOverlayStatus()
   },
   (result) => {
     void coinksScores.record(result.player, result.score)
     coinksModule?.finishGame(result.player)
   },
-  gameAssetsRoot
+  gameAssetsRoot,
+  hypeAssetsRoot
 )
 
 let currentSettings: AppSettings
 let atMeModule: AtMeModule | undefined
 let coinksModule: CoinksModule | undefined
+let hypeTrainModule: HypeTrainModule | undefined
 
 function resourcesRoot(): string {
   return app.isPackaged ? join(process.resourcesPath, 'resources') : join(app.getAppPath(), 'resources')
@@ -268,6 +280,36 @@ function broadcastCoinksState(state: CoinksState): void {
   coinksWindow?.webContents.send('coinks:state-changed', state)
 }
 
+// Translates HypeTrainModule's battle events into overlay broadcasts — kept
+// here rather than in the module itself so the module stays settings-agnostic
+// (volume only needs adding to the 'begin' event; the overlay remembers it
+// for the rest of the battle, same as Celebration/Coinks).
+function broadcastHypeTrainBattleEvent(event: HypeTrainBattleEvent): void {
+  if (event.type === 'hypetrain:begin') {
+    overlayServer.broadcast({ ...event, volume: currentSettings.modules.hypeTrain.volume })
+  } else {
+    overlayServer.broadcast(event)
+  }
+  broadcastHypeTrainState()
+}
+
+function hypeTrainOverlayStatus(): { status: string; url: string; clients: number; error?: string } {
+  return {
+    status: overlayServer.status,
+    url: overlayServer.overlayUrl('overlay-hypetrain'),
+    clients: overlayServer.clientCount('hype-train'),
+    error: overlayServer.lastError
+  }
+}
+
+function broadcastHypeTrainOverlayStatus(): void {
+  hypeTrainWindow?.webContents.send('hype-train:overlay-status-changed', hypeTrainOverlayStatus())
+}
+
+function broadcastHypeTrainState(): void {
+  hypeTrainWindow?.webContents.send('hype-train:state-changed', hypeTrainModule?.state())
+}
+
 // Media is addressed by id over HTTP rather than by file path — the overlay
 // page is a browser source on a different origin from the filesystem, so it
 // can't read local files directly (the same constraint that made sounds use
@@ -372,6 +414,15 @@ async function registerModules(): Promise<void> {
   moduleManager.register(celebration)
   moduleManager.register(coinks)
 
+  const hypeTrain = new HypeTrainModule(
+    hypeTrainEventSub,
+    () => currentSettings.twitch.userId,
+    () => currentSettings.twitch.accessToken,
+    broadcastHypeTrainBattleEvent
+  )
+  hypeTrainModule = hypeTrain
+  moduleManager.register(hypeTrain)
+
   await moduleManager.setEnabled(liveStudioAudience.id, currentSettings.modules.liveStudioAudience.enabled)
   await moduleManager.setEnabled(textToSpeech.id, currentSettings.modules.textToSpeech.enabled)
   await moduleManager.setEnabled(command.id, currentSettings.modules.command.enabled)
@@ -380,6 +431,7 @@ async function registerModules(): Promise<void> {
   await moduleManager.setEnabled(mediaGif.id, currentSettings.modules.mediaGif.enabled)
   await moduleManager.setEnabled(celebration.id, currentSettings.modules.celebration.enabled)
   await moduleManager.setEnabled(coinks.id, currentSettings.modules.coinks.enabled)
+  await moduleManager.setEnabled(hypeTrain.id, currentSettings.modules.hypeTrain.enabled)
 }
 
 function syncSettingsFromModules(): void {
@@ -406,6 +458,9 @@ function syncSettingsFromModules(): void {
 
   const coinks = moduleManager.get('coinks')
   if (coinks) currentSettings.modules.coinks.enabled = coinks.enabled
+
+  const hypeTrain = moduleManager.get('hype-train')
+  if (hypeTrain) currentSettings.modules.hypeTrain.enabled = hypeTrain.enabled
 }
 
 function toggleLibraryWindow(kind: LibraryWindowKind): void {
@@ -473,6 +528,16 @@ function toggleCelebrationWindow(): void {
   }, hudWindow)
 }
 
+function toggleHypeTrainWindow(): void {
+  if (hypeTrainWindow) {
+    hypeTrainWindow.close()
+    return
+  }
+  hypeTrainWindow = createHypeTrainWindow(() => {
+    hypeTrainWindow = undefined
+  }, hudWindow)
+}
+
 function registerIpcHandlers(): void {
   ipcMain.handle('hud:get-modules', () => summarize(orderedVisibleModules()))
 
@@ -515,6 +580,7 @@ function registerIpcHandlers(): void {
     else if (id === 'media-gif') toggleMediaWindow()
     else if (id === 'celebration') toggleCelebrationWindow()
     else if (id === 'coinks') toggleCoinksWindow()
+    else if (id === 'hype-train') toggleHypeTrainWindow()
   })
 
   ipcMain.on('hud:quit', () => {
@@ -770,6 +836,23 @@ function registerIpcHandlers(): void {
   ipcMain.handle('coinks:leaderboard', () => coinksScores.leaderboard())
 
   ipcMain.handle('coinks:overlay-status', () => coinksOverlayStatus())
+
+  ipcMain.handle('hype-train:get-settings', () => ({
+    volume: currentSettings.modules.hypeTrain.volume
+  }))
+
+  ipcMain.handle('hype-train:set-settings', async (_event, patch: Partial<{ volume: number }>) => {
+    currentSettings.modules.hypeTrain = { ...currentSettings.modules.hypeTrain, ...patch }
+    await settingsStore.save(currentSettings)
+  })
+
+  ipcMain.handle('hype-train:test', () => {
+    hypeTrainModule?.simulate()
+  })
+
+  ipcMain.handle('hype-train:get-state', () => hypeTrainModule?.state() ?? { active: false, level: 1, archerCount: 0 })
+
+  ipcMain.handle('hype-train:overlay-status', () => hypeTrainOverlayStatus())
 
   ipcMain.handle('media:set-port', async (_event, port: number) => {
     if (Number.isInteger(port) && port >= 1024 && port <= 65535 && port !== overlayServer.port) {
