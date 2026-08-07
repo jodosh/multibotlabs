@@ -186,7 +186,7 @@ export function createMediaWindow(onClose: () => void, hudWindow?: BrowserWindow
 // Opened via right-click on the Celebration HUD tile. Small fixed form like
 // the TTS settings window — the fireworks themselves render in OBS, not here.
 export function createCelebrationWindow(onClose: () => void, hudWindow?: BrowserWindow): BrowserWindow {
-  const width = 440
+  const width = 560
   const height = 480
 
   const win = new BrowserWindow({
@@ -209,8 +209,8 @@ export function createCelebrationWindow(onClose: () => void, hudWindow?: Browser
 // Opened via right-click on the Coinks HUD tile. Taller than the Celebration
 // window because it also shows the turn queue and the local leaderboard.
 export function createCoinksWindow(onClose: () => void, hudWindow?: BrowserWindow): BrowserWindow {
-  const width = 460
-  const height = 620
+  const width = 560
+  const height = 760
 
   const win = new BrowserWindow({
     width,
