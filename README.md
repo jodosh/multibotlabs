@@ -1,12 +1,14 @@
 # MultiBot
 
+[labs.streambotty.com](https://labs.streambotty.com)
+
 A modular Twitch bot toolkit for streamers, built as a small cross-platform desktop
 app. A single always-on-top HUD bar lets you turn individual bots on and off during a
 stream; each bot is independent, so you only run what you actually use.
 
 ## What it does
 
-MultiBot ships eight independent bots. Turn any subset on from the HUD — they don't
+MultiBot ships nine independent bots. Turn any subset on from the HUD — they don't
 depend on each other:
 
 - **Command** — plays a sound and/or sends a chat reply for a matching `!command`.
@@ -22,6 +24,10 @@ depend on each other:
   chat command.
 - **Coinks** — a coin-drop minigame on the overlay: viewers queue up, take turns
   dropping coins onto a scrolling belt of scoring tiles, and compete for score.
+- **Hype Train** — puts on an archers-vs-troll battle on the overlay for the life of a
+  Twitch Hype Train: archers named after each contributor fight a troll whose health
+  tracks the train's progress, leveling up (and facing a fresh troll) each time the
+  train does.
 
 Command, Emote, and Coinks-style features share one underlying library and manager UI
 rather than each reinventing sound/data storage — add a sound, assign it a trigger,
@@ -29,10 +35,10 @@ done.
 
 ### Stream overlays
 
-Media, Celebration, and Coinks render on your stream via **OBS Browser Sources**, not
-by capturing an application window. MultiBot runs a small local HTTP server
-(`127.0.0.1` only — nothing it serves is ever reachable off your machine) and each
-overlay is its own URL you add as a Browser Source. That means OBS — not the bot —
+Media, Celebration, Coinks, and Hype Train render on your stream via **OBS Browser
+Sources**, not by capturing an application window. MultiBot runs a small local HTTP
+server (`127.0.0.1` only — nothing it serves is ever reachable off your machine) and
+each overlay is its own URL you add as a Browser Source. That means OBS — not the bot —
 controls where each one sits, how big it is, and how it layers with the rest of your
 scene, and it composites with real transparency.
 
@@ -54,7 +60,7 @@ scene, and it composites with real transparency.
 
 ## Requirements
 
-- Windows or Linux
+- Windows, macOS (Apple Silicon), or Linux
 - [Node.js](https://nodejs.org/) 20+
 
 ## Getting started
