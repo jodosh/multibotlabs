@@ -233,8 +233,8 @@ export function createCoinksWindow(onClose: () => void, hudWindow?: BrowserWindo
 // row: unlike Celebration/Coinks this bot isn't chat/bits-triggered, it's
 // driven entirely by Twitch's own Hype Train detection over EventSub.
 export function createHypeTrainWindow(onClose: () => void, hudWindow?: BrowserWindow): BrowserWindow {
-  const width = 480
-  const height = 420
+  const width = 540
+  const height = 520
 
   const win = new BrowserWindow({
     width,
