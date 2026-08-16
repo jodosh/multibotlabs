@@ -9,7 +9,7 @@ Issues once this lives in its own repo.
 - HUD, Settings (Twitch OAuth login/logout, Available Bots show/reorder), Library
   manager windows, TTS settings window
 - Bot modules: Text-to-Speech, Live Studio Audience, Command, Emote, AtMe, Media (gif),
-  Celebration (fireworks), Coinks
+  Celebration (fireworks), Coinks, Hype Train
 - Command/Emote legacy-data import from the old .NET app's `commands.json` /
   `commands_text.json` / `emotes.json`
 - Cross-platform audio playback (data: URL fix — see CLAUDE.md)
@@ -58,6 +58,18 @@ Issues once this lives in its own repo.
   Blank tiles were dropped — the original's tiles were narrower than their spacing so
   bare belt showed between all of them anyway, but on a flush strip a blank reads as a
   hole.
+- Hype Train: fourth overlay page at `/overlay-hypetrain/`. Twitch only exposes Hype
+  Train state via EventSub (not IRC, unlike every other bot here), so this is the
+  first bot with its own EventSub WebSocket client (`src/main/twitch/
+  hypeTrainEventSub.ts`) rather than reusing the shared chat connection — see
+  CLAUDE.md. Archers spawn one at a time as `hypetrain:archer-join` events arrive
+  (Twitch never hands over a full roster, only the latest contributor per event);
+  troll HP tracks progress toward the current level's goal. A level-up defeats the
+  troll and stands up a fresh, correctly-leveled one; the Hype Train ending has the
+  troll fire a parting shot rather than a win/lose-specific animation. Sprites are
+  hand-drawn (`resources/hype/`) rather than procedural, unlike Celebration/Coinks.
+  Manager window has a Test Hype Train button that drives the same code path a real
+  train does, for OBS setup without waiting on an actual one.
 - Packaging/distribution: `electron-builder` builds Windows (NSIS), Linux (AppImage +
   deb), and macOS/Apple Silicon (dmg) installers, all reading the app icon from
   `resources/icon.png`/`.ico`. `.github/workflows/release.yml` builds all three on a
@@ -65,6 +77,9 @@ Issues once this lives in its own repo.
   Release whenever a `v*` tag is pushed; `.github/workflows/ci.yml` runs `typecheck` on
   every push/PR to `main`. Binaries are **unsigned** on both Windows and macOS — see
   the "Not started" code-signing entry below.
+- Windows/macOS/Arch Linux runtime testing: the app has now actually been run
+  end-to-end on real hardware for all three, not just built by CI — closes out what
+  was previously the last big open item before a 1.0 release.
 
 ## Not started
 
@@ -87,9 +102,6 @@ Issues once this lives in its own repo.
   `spd-say` directly via `child_process` in the main process (proven to work);
   keep `window.speechSynthesis` on Windows, where it's well-supported via SAPI.
   This means a platform-specific code path, not a config fix.
-- **Windows/macOS runtime testing** — CI now builds installers for both (see
-  Packaging/distribution above), but nobody has actually run the app on real Windows
-  or macOS hardware yet; only Linux has been exercised end-to-end
 - **Code signing (Windows + macOS)** — both platforms' installers are unsigned, so
   Windows SmartScreen and macOS Gatekeeper both warn on first launch ("Unknown
   publisher" / "can't be opened"); workaround for now is manual bypass (SmartScreen's
