@@ -134,17 +134,11 @@ function renderLegacyImportStatus(status: LegacyImportStatus): void {
     return
   }
 
-  // Both rows stay available after a successful run. Hiding them made a
-  // partial or failed import unrecoverable — the emote importer read the
-  // wrong shape for a long time and imported nothing, and there was no way
-  // to retry once the flag was set short of hand-editing settings.json.
-  // Re-running is safe: the importers skip triggers already in the library.
-  legacySoundsRow.hidden = false
-  legacyMediaRow.hidden = false
-  legacyImportSection.hidden = false
-
-  importSoundsButton.textContent = status.soundsImported ? 'Import again' : 'Import'
-  importMediaButton.textContent = status.mediaImported ? 'Import again' : 'Import'
+  legacySoundsRow.hidden = status.soundsImported
+  legacyMediaRow.hidden = status.mediaImported
+  // Both already imported: nothing left to show, so drop the whole section
+  // rather than leaving a header with two hidden rows under it.
+  legacyImportSection.hidden = status.soundsImported && status.mediaImported
 }
 
 async function loadLegacyImportStatus(): Promise<void> {

@@ -33,11 +33,14 @@ interface LegacyTextCommand {
   Description?: string
 }
 
-// Running an import twice is expected — the button stays available so a
-// failed or partial run can be retried — and SoundLibrary.importSound() has
-// no notion of duplicates, so it would copy the audio file and add a second
-// row every time. Matching is case-insensitive to agree with commandModule.ts
-// and emoteModule.ts, which look triggers up that way.
+// The UI offers the import only once — the row hides itself once
+// legacyImport.soundsImported is set — but an import can still be re-run by
+// clearing that flag in settings.json by hand, which is how anyone who ran
+// the version with the broken emote parser recovers. SoundLibrary.importSound()
+// has no notion of duplicates, so without this that second run would add a
+// second row and a second copy of the audio for every command and text reply
+// the first run already brought over. Matching is case-insensitive to agree
+// with commandModule.ts and emoteModule.ts, which look triggers up that way.
 // The set is live rather than a snapshot: entries added during this run are
 // registered as they go, so a file that lists the same trigger twice doesn't
 // produce two library rows.
