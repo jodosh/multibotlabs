@@ -13,6 +13,22 @@ export interface TextToSpeechConfig {
 // answer one message.
 export const TTS_COMMAND = 'tts'
 
+// Twitch puts the cheermote tokens inline in the message text ("Cheer100 hey",
+// "hey Cheer100 there", "uni500 uni500 hi") and reports only the total in the
+// tags, so they have to be removed before speaking or the bot reads "cheer one
+// hundred" aloud. A token is an alphabetic prefix followed by an amount —
+// the prefix set is open-ended (Cheer, uni, and per-channel ones), so this
+// matches by shape rather than by a fixed list.
+const CHEERMOTE_TOKEN = /^[a-zA-Z]+[1-9]\d*$/
+
+function stripCheermotes(text: string): string {
+  return text
+    .split(/\s+/)
+    .filter((token) => !CHEERMOTE_TOKEN.test(token))
+    .join(' ')
+    .trim()
+}
+
 export type SpeakFn = (text: string, voiceName: string) => void
 
 /**
@@ -68,23 +84,27 @@ export class TextToSpeechModule implements IBotModule {
 
     const trimmed = event.text.trim()
     const firstSpace = trimmed.indexOf(' ')
-    // Both paths drop the first word: the cheer path because the bits token
-    // ("Cheer100") leads the message, the command path because "!tts" does.
-    const rest = firstSpace < 0 ? '' : trimmed.slice(firstSpace + 1).trim()
-
     const isTtsCommand = trimmed.startsWith('!') && trimmed.slice(1).split(/\s/)[0].toLowerCase() === TTS_COMMAND
 
+    // Only a message that actually carries bits can contain a cheermote. On
+    // any other message (minimumBits: 0 makes every message eligible) the
+    // text is spoken exactly as typed — the original port dropped the first
+    // word unconditionally, which ate a real word out of every non-cheer
+    // message. A cheer can also be a !tts command, so both paths strip.
+    const spoken = (text: string): string => (event.bits > 0 ? stripCheermotes(text) : text)
+
     if (freeCommandEnabled && isTtsCommand) {
-      // "!tts" with nothing after it has nothing to say — speaking the bare
-      // command back would just read the word "tts" aloud.
-      if (rest) this.speak(rest, voiceName)
+      // Drop the "!tts" itself. Nothing after it means nothing to say —
+      // speaking the bare command back would just read the word "tts" aloud.
+      const args = firstSpace < 0 ? '' : spoken(trimmed.slice(firstSpace + 1).trim())
+      if (args) this.speak(args, voiceName)
       return
     }
 
     if (event.bits < minimumBits) return
 
-    // Preserved from the original port: a message with no space at all is
-    // spoken whole rather than reduced to nothing.
-    this.speak(firstSpace < 0 ? trimmed : rest, voiceName)
+    // A cheer with no words beyond the cheermote itself has nothing to say.
+    const speechText = spoken(trimmed)
+    if (speechText) this.speak(speechText, voiceName)
   }
 }
