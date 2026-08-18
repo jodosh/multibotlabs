@@ -6,3 +6,6 @@ dist/
 Thumbs.db
 *.tsbuildinfo
 .dccache
+
+# Local-only reference material (e.g. the old .NET app source) — never commit.
+untracked/
