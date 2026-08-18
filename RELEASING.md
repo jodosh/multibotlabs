@@ -12,10 +12,9 @@ Standard [semver](https://semver.org): `MAJOR.MINOR.PATCH`. `package.json`'s
 - **PATCH** (`1.2.0` → `1.2.1`): bug fixes only. Nothing user-facing added,
   no new setting, no new bot. If a streamer would have to be *told* about it
   to know it's there, it isn't a patch.
-- **MINOR** (`1.2.0` → `1.3.0`): a new bot, a new feature, a new setting, or
-  anything from `ROADMAP.md`'s "Not started" moving to "Done" — while staying
-  backward compatible. This covers most releases. A fix can also land here
-  when it turns something that never worked at all into something that does.
+- **MINOR** (`1.2.0` → `1.3.0`): a new bot, a new feature, a new setting — while
+  staying backward compatible. This covers most releases. A fix can also land
+  here when it turns something that never worked at all into something that does.
 - **MAJOR** (`1.2.0` → `2.0.0`): a breaking change — existing settings files,
   sound libraries, or OBS browser-source URLs stop working as they did, and
   the streamer has to do something about it. Reserved for genuine breakage,
@@ -56,13 +55,13 @@ plain `git push` does not push tags on its own.
 2. **Confirm CI is green on `main`** (the `CI` workflow's `typecheck` job) —
    don't rely on the release workflow to catch a typecheck failure for you,
    it'll just waste three platforms' worth of build time finding out.
-3. **Update `ROADMAP.md`** if this release moves anything between sections.
-   Easiest to do now, while you still remember what went in.
+3. **Close the GitHub issues this release resolves**, if the merge didn't
+   already. Easiest to do now, while you still remember what went in.
 4. **Bump and tag**: `npm version patch|minor|major` then
    `git push --follow-tags`.
 5. **Watch the `Release` workflow** in the Actions tab — it matrix-builds
    Windows (NSIS), Linux (AppImage + deb), and macOS/Apple Silicon (dmg) in
-   parallel, all unsigned for now (see `ROADMAP.md`'s code-signing entry).
+   parallel, all unsigned for now (see the open code-signing issue).
 6. Once all three jobs finish, electron-builder has created a **draft**
    GitHub Release with all the installers attached (`publish: always` in
    the workflow, `provider: github` in `package.json`'s `build` config).

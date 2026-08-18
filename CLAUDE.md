@@ -47,14 +47,14 @@ all** (ESM-only, no `require` export condition), so it would fail with
 would have installed silently and only surfaced the breakage at
 build/runtime, well past the point where the version choice was made. If a
 transitive vulnerability has no fix reachable by bumping the direct
-dependency, it stays open (documented in `ROADMAP.md`) rather than forced.
+dependency, it stays open — tracked as a GitHub issue rather than forced.
 
 That nanoid case has since resolved itself, which is the point of waiting:
 upstream backported the fix to `3.3.17`, inside the `^3.3.16` range `postcss`
 already declares, so a plain `npm update nanoid` cleared it with no override
 and no build change. Updating within a range a parent already allows is not
 an override — that is always fair game, and worth re-checking periodically
-on anything parked in `ROADMAP.md`.
+on any advisory parked in an open issue.
 
 ## Architecture
 
@@ -105,6 +105,29 @@ All chat-driven modules share one `TwitchChatClient` (`src/main/modules/
 twitchChatClient.ts`) instead of opening their own IRC connection — `acquire()`/
 `release()` are ref-counted, so the connection stays open as long as at least one
 module needs it and tears down when the last one stops.
+
+**Not everything Twitch exposes comes over IRC.** Hype Train state is only
+available via EventSub, so `HypeTrainModule` runs its own EventSub WebSocket
+client (`src/main/twitch/hypeTrainEventSub.ts`) rather than reusing the shared
+chat connection — the first bot here to need a second transport. Check which
+API a new bot's data actually lives behind before assuming the chat client can
+carry it; subscriptions, channel points, and polls are all EventSub-only too.
+EventSub also shapes what a bot can render: Twitch never hands over a full
+contributor roster for a Hype Train, only the latest contributor per event,
+which is why the overlay spawns archers one at a time as events arrive instead
+of drawing a known set.
+
+Two bots carry caveats worth knowing before you build on them:
+
+- **AtMe** keeps its queue in memory only — it resets on restart, deliberately,
+  since a queue of stale @-mentions from a previous stream is noise. Its
+  "Highlight My Message" detection (`tags['msg-id'] === 'highlighted-message'`,
+  verified against `tmi.js` source) has **never been exercised against a real
+  redemption**; treat it as unproven if it misbehaves.
+- **Celebration** matches a cheer's bits with an **exact** comparison, not a
+  threshold. That preserves the old app's behavior and is what lets Celebration
+  and Coinks hold distinct prices without one large cheer triggering both — so
+  don't "fix" it into a `>=` without accounting for that interaction.
 
 ### Sound triggers (Command + Emote)
 
@@ -173,6 +196,14 @@ Two things to keep in mind when extending it:
   `windowManager.ts` and keeps the overlay single-origin, which is what lets it fetch
   `/media/:id` without CORS or `file://` problems.
 
+**None of the original Unity visual assets can be reused.** They are Hovl Studio
+Asset Store content, which cannot be redistributed in a public repo — that is why
+Celebration's fireworks are procedural canvas particles and their audio is
+synthesised, rather than either being ported over. Coinks and Hype Train are
+unaffected: their art is bespoke (`resources/coinks/`, `resources/hype/`) and ships
+in the repo. Assume any new overlay drawing on the old app's look has to be
+recreated, not copied.
+
 Overlay stylesheets deliberately do **not** import `theme.css` — the pages must stay
 fully transparent for OBS to composite them.
 
@@ -196,6 +227,27 @@ written as fixed world-space y values derived from the width scale, which assume
 roughly 16:9 source. OBS lets a browser source be any shape, and on a wider one the
 fireworks burst above the top edge and the coin belt slid off the bottom. Anchor
 vertical positions to a fraction of `canvas.height`.
+
+### Coinks: the coin is not a physics toss
+
+Recovered from the original Unity project, which is the only place this was ever
+written down — worth keeping because the behavior looks like a physics bug if you
+don't know it's deliberate. The coin prefab has `m_GravityScale: 0`: the coin does
+**not** arc onto the belt. It travels straight up at constant speed from just below
+the belt, lands, and is then dragged off the right edge (the original's
+`ConveyorBeltController` moved any rigidbody resting on it). Coinks is a timing
+game, not an aiming game.
+
+Two deliberate departures from the original, both anti-stopwatch measures: the lead
+time between `!coin` and the coin appearing is randomised 0–1s rather than the
+original's fixed 1.2s, and the coin decelerates under friction so it settles at a
+varying height instead of stopping dead at a fixed one.
+
+Tile width is derived as `beltSpeed × spawnInterval` and tile height from the art's
+190×200 aspect, so the strip stays flush and undistorted at every speed tier and the
+belt texture scrolls with it. The original's blank tiles were dropped: its tiles were
+narrower than their spacing so bare belt showed between all of them anyway, but on a
+flush strip a blank reads as a hole.
 
 ### Overlay audio
 
