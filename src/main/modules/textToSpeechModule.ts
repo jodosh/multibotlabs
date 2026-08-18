@@ -4,7 +4,14 @@ import type { TwitchChatClient, ChatMessageEvent } from './twitchChatClient'
 export interface TextToSpeechConfig {
   minimumBits: number
   voiceName: string
+  freeCommandEnabled: boolean
 }
+
+// The free-speech command, matched case-insensitively as the message's first
+// word. commandModule.ts skips this same name while free TTS is on, the way
+// it already yields "!intro" to User Intros — so the two bots can't both
+// answer one message.
+export const TTS_COMMAND = 'tts'
 
 export type SpeakFn = (text: string, voiceName: string) => void
 
@@ -56,12 +63,28 @@ export class TextToSpeechModule implements IBotModule {
   }
 
   private handleMessage(event: ChatMessageEvent): void {
-    const { minimumBits, voiceName } = this.config()
-    if (event.bits < minimumBits || !event.text) return
+    const { minimumBits, voiceName, freeCommandEnabled } = this.config()
+    if (!event.text) return
 
-    const firstSpace = event.text.indexOf(' ')
-    const speechText = firstSpace < 0 ? event.text : event.text.slice(firstSpace + 1)
+    const trimmed = event.text.trim()
+    const firstSpace = trimmed.indexOf(' ')
+    // Both paths drop the first word: the cheer path because the bits token
+    // ("Cheer100") leads the message, the command path because "!tts" does.
+    const rest = firstSpace < 0 ? '' : trimmed.slice(firstSpace + 1).trim()
 
-    this.speak(speechText, voiceName)
+    const isTtsCommand = trimmed.startsWith('!') && trimmed.slice(1).split(/\s/)[0].toLowerCase() === TTS_COMMAND
+
+    if (freeCommandEnabled && isTtsCommand) {
+      // "!tts" with nothing after it has nothing to say — speaking the bare
+      // command back would just read the word "tts" aloud.
+      if (rest) this.speak(rest, voiceName)
+      return
+    }
+
+    if (event.bits < minimumBits) return
+
+    // Preserved from the original port: a message with no space at all is
+    // spoken whole rather than reduced to nothing.
+    this.speak(firstSpace < 0 ? trimmed : rest, voiceName)
   }
 }

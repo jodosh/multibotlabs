@@ -22,6 +22,7 @@ export interface AppSettings {
       enabled: boolean
       minimumBits: number
       voiceName: string
+      freeCommandEnabled: boolean // !tts speaks for free, bypassing minimumBits
     }
     liveStudioAudience: {
       enabled: boolean
@@ -84,7 +85,8 @@ export const defaultSettings: AppSettings = {
     textToSpeech: {
       enabled: false,
       minimumBits: 100,
-      voiceName: ''
+      voiceName: '',
+      freeCommandEnabled: false
     },
     liveStudioAudience: {
       enabled: false

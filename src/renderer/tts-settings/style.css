@@ -31,3 +31,46 @@ select {
   font-size: 13px;
   font-family: inherit;
 }
+
+button {
+  padding: 6px 14px;
+  background: var(--color-button-bg);
+  border: none;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+button:hover {
+  background: var(--color-button-bg-hover);
+}
+
+/* The blanket `input, select` rule above stretches every control to the full
+   window width, which turns a checkbox into an absurd full-width box. Scope
+   it back for the checkbox row, which lays out inline with its text. */
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 16px;
+  font-size: 13px;
+}
+
+.checkbox input {
+  display: inline;
+  width: auto;
+  margin: 0;
+}
+
+.conflict-warning {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border: 1px solid var(--color-status-error);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--color-status-error) 12%, var(--color-surface));
+  color: var(--color-text);
+  font-size: 12px;
+  line-height: 1.4;
+}

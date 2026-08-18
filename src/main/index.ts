@@ -17,7 +17,7 @@ import {
 import { ModuleManager } from './modules/moduleManager'
 import { TwitchChatClient } from './modules/twitchChatClient'
 import { LiveStudioAudienceModule } from './modules/liveStudioAudienceModule'
-import { TextToSpeechModule } from './modules/textToSpeechModule'
+import { TextToSpeechModule, TTS_COMMAND } from './modules/textToSpeechModule'
 import { CommandModule } from './modules/commandModule'
 import { EmoteModule } from './modules/emoteModule'
 import { AtMeModule, type AtMeQueueItem } from './modules/atMeModule'
@@ -350,6 +350,7 @@ async function registerModules(): Promise<void> {
     () => currentSettings.twitch.accessToken,
     () => currentSettings.modules.command.allowUserList,
     () => currentSettings.modules.command.userIntrosEnabled,
+    () => currentSettings.modules.textToSpeech.freeCommandEnabled,
     playTriggerSound
   )
 
@@ -659,9 +660,22 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle('tts-settings:get', () => currentSettings.modules.textToSpeech)
 
+  // Reports Command-bot entries the free !tts command would shadow, so the
+  // TTS window can warn about them. Checked live on each open rather than
+  // cached: the Library window can add a !tts entry at any time.
+  ipcMain.handle('tts-settings:command-conflicts', () => {
+    const matches = (text: string): boolean =>
+      (text.startsWith('!') ? text.slice(1) : text).trim().toLowerCase() === TTS_COMMAND
+
+    return {
+      sounds: soundLibrary.listSounds('command').filter((sound) => matches(sound.trigger)).length,
+      textReplies: soundLibrary.listTextReplies().filter((reply) => matches(reply.command)).length
+    }
+  })
+
   ipcMain.handle(
     'tts-settings:set',
-    async (_event, patch: Partial<{ enabled: boolean; minimumBits: number; voiceName: string }>) => {
+    async (_event, patch: Partial<{ enabled: boolean; minimumBits: number; voiceName: string; freeCommandEnabled: boolean }>) => {
       currentSettings.modules.textToSpeech = { ...currentSettings.modules.textToSpeech, ...patch }
       await settingsStore.save(currentSettings)
     }
@@ -732,6 +746,8 @@ function registerIpcHandlers(): void {
   })
 
   ipcMain.handle('library:get-user-intros-enabled', () => currentSettings.modules.command.userIntrosEnabled)
+
+  ipcMain.handle('library:get-tts-command-enabled', () => currentSettings.modules.textToSpeech.freeCommandEnabled)
 
   ipcMain.handle('library:set-user-intros-enabled', async (_event, value: boolean) => {
     currentSettings.modules.command.userIntrosEnabled = value
