@@ -42,6 +42,25 @@ import type { SoundTriggerKind } from './library/types'
 // otherwise — must be set before the app is ready.
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
 
+// Chromium ships its speech-dispatcher integration off by default on Linux,
+// so speechSynthesis reports zero voices and the Text-To-Speech bot is
+// silently dead there — the voice dropdown just comes up empty. Enabling it
+// is what `--enable-speech-dispatcher` on the command line does; setting it
+// here means a normally-launched build behaves the same as one started from
+// a terminal with that flag. Also must be set before the app is ready.
+//
+// Linux-only on purpose: speech-dispatcher doesn't exist on Windows or
+// macOS, which reach their system voices through their own backends and
+// need no switch. The flag would be inert there, but scoping it keeps it
+// from reading as something those platforms depend on.
+//
+// This needs the speech-dispatcher daemon (`speechd`) plus at least one
+// voice package installed on the machine; without them the switch is
+// harmless but the voice list stays empty. See README.
+if (process.platform === 'linux') {
+  app.commandLine.appendSwitch('enable-speech-dispatcher')
+}
+
 interface ModuleSummary {
   id: string
   displayName: string
