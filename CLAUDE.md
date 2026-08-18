@@ -49,6 +49,13 @@ build/runtime, well past the point where the version choice was made. If a
 transitive vulnerability has no fix reachable by bumping the direct
 dependency, it stays open (documented in `ROADMAP.md`) rather than forced.
 
+That nanoid case has since resolved itself, which is the point of waiting:
+upstream backported the fix to `3.3.17`, inside the `^3.3.16` range `postcss`
+already declares, so a plain `npm update nanoid` cleared it with no override
+and no build change. Updating within a range a parent already allows is not
+an override — that is always fair game, and worth re-checking periodically
+on anything parked in `ROADMAP.md`.
+
 ## Architecture
 
 ### Process/window layout

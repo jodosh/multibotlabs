@@ -1,8 +1,9 @@
 # Roadmap
 
 Working status list, not auto-loaded context — see `CLAUDE.md` for stable
-architecture. Expected to go stale; update as things move, or migrate to GitHub
-Issues once this lives in its own repo.
+architecture. Expected to go stale; update it as part of cutting a release
+(see `RELEASING.md`). Tracks the shape of the work; individual bugs and small
+requests live in GitHub Issues.
 
 ## Done
 
@@ -11,7 +12,12 @@ Issues once this lives in its own repo.
 - Bot modules: Text-to-Speech, Live Studio Audience, Command, Emote, AtMe, Media (gif),
   Celebration (fireworks), Coinks, Hype Train
 - Command/Emote legacy-data import from the old .NET app's `commands.json` /
-  `commands_text.json` / `emotes.json`
+  `commands_text.json` / `emotes.json`. The two files disagree on shape —
+  commands are flat, emotes nest the sound under a `Sound` object — and the
+  importer originally only knew the flat one, so emotes silently imported
+  nothing until that was fixed. `emotes.json` also holds every channel emote
+  the old app fetched from Twitch, not just the configured ones, so most
+  entries legitimately have no sound and are counted rather than reported.
 - Cross-platform audio playback (data: URL fix — see CLAUDE.md)
 - AtMe: queues chat messages that @-mention the streamer or use Twitch's
   "Highlight My Message" redemption, into a dismissible list in its own Queue
@@ -80,6 +86,22 @@ Issues once this lives in its own repo.
 - Windows/macOS/Arch Linux runtime testing: the app has now actually been run
   end-to-end on real hardware for all three, not just built by CI — closes out what
   was previously the last big open item before a 1.0 release.
+- TTS voices on Linux: Chromium ships its speech-dispatcher integration **disabled
+  by default**, which is why `speechSynthesis` reported zero voices — not, as
+  previously assumed here, a missing integration in Electron's open-source build.
+  `app.commandLine.appendSwitch('enable-speech-dispatcher')` before app-ready turns
+  it on; measured 0 voices without it and 14,805 with, on an Arch install with
+  `speech-dispatcher` + `espeak-ng`. No platform-specific speech path and no
+  shelling out to `spd-say` was needed. It only exposes voices the machine already
+  has, so those packages are a documented Linux requirement (see README).
+- TTS improvements: a free `!tts` command with its own toggle (bits still gate plain
+  chat messages), reserved against the Command bot the same way `!intro` is, with
+  conflict warnings in both the TTS and Library windows; a Test button that
+  auditions the selected voice; and a filter over the voice list, which Linux's
+  ~15,000 espeak-ng variants made unusable as a plain dropdown. Also fixed a bug
+  carried over from the .NET port: the first word was stripped from every message
+  on the assumption a cheermote always leads it, so non-cheer messages lost a real
+  word — cheermotes are now removed by shape, wherever they appear.
 
 ## Not started
 
@@ -91,17 +113,6 @@ Issues once this lives in its own repo.
   AtMe's first version (see `src/main/modules/atMeModule.ts`); would use
   Electron's `globalShortcut` API, needs a safe default key combo chosen
   carefully to avoid clashing with OBS/games
-- **TTS voices (Linux)** — `speechSynthesis.getVoices()` returns empty and speaking
-  throws `synthesis-failed`, even with `speech-dispatcher` + `espeak-ng` installed
-  and confirmed working at the OS level (`spd-say -L` lists hundreds of voices,
-  `spd-say "..."` succeeds). Verbose Chromium TTS/speech logging showed zero
-  attempted connection when triggering speech, suggesting Electron's bundled
-  open-source Chromium may not wire Linux `speechSynthesis` to speech-dispatcher at
-  all (a known gap vs. Google Chrome). Deprioritized rather than chase further.
-  Likely fix if revisited: bypass the Web Speech API on Linux and shell out to
-  `spd-say` directly via `child_process` in the main process (proven to work);
-  keep `window.speechSynthesis` on Windows, where it's well-supported via SAPI.
-  This means a platform-specific code path, not a config fix.
 - **Code signing (Windows + macOS)** — both platforms' installers are unsigned, so
   Windows SmartScreen and macOS Gatekeeper both warn on first launch ("Unknown
   publisher" / "can't be opened"); workaround for now is manual bypass (SmartScreen's
@@ -114,7 +125,7 @@ Issues once this lives in its own repo.
   Apple-specific step still needed even once Windows is signed via SignPath.
 - **ClipManager** — dropped from scope early on (Twitch's clip API changed since the
   old implementation); would need a real redesign if revisited
-- **Open devDependency vulnerabilities (5, per Snyk SCA)** — all dev-tooling only
+- **Open devDependency vulnerabilities (3, per Snyk SCA)** — all dev-tooling only
   (`electron-vite`/`vite`/`electron-builder`'s own transitive deps), never shipped in
   the packaged app; all currently blocked from a clean fix, per CLAUDE.md's "no npm
   overrides" norm:
@@ -123,18 +134,13 @@ Issues once this lives in its own repo.
     on the latest `6.0.0-beta.1`; the fix (`0.28.1`) isn't reachable by bumping
     `electron-vite`, only by an override we've ruled out. Re-check next time
     `electron-vite` cuts a release.
-  - `nanoid@3.3.16` ×2 (high, SNYK-JS-NANOID-18506894/18506897) — pulled in via
-    `vite`→`postcss`. Fix is `nanoid@5.1.16`, which is ESM-only; `postcss` requires
-    it via CJS (`require('nanoid/non-secure')`), so any override breaks every CSS
-    build. Blocked until `postcss` itself moves off CJS or off `nanoid`.
   - `unzipper@0.12.5` (medium, SNYK-JS-UNZIPPER-18365659) and `inflight@1.0.6`
     (medium, SNYK-JS-INFLIGHT-6095116) — both via `electron-builder`'s own
     dependency tree; no fixed version published upstream for either yet.
   Re-run `snyk_sca_scan` (with `dev: true` — these are all devDependencies, invisible
-  otherwise) periodically to check if any of these gained a real fix upstream.
-
-## Before the initial commit to a new repo
-
-- Add a LICENSE
-- Write a real README (current repo-root one is just "# MultiBot")
-- Final pass over `app/` for leftover test/debug artifacts
+  otherwise) periodically to check if any of these gained a real fix upstream. This
+  pays off: two `nanoid` advisories sat on this list for a long time because the
+  only fix was the ESM-only `5.x`, which would have broken `postcss`'s CJS
+  `require()` — then upstream backported it to `3.3.17`, inside the `^3.3.16`
+  range `postcss` already declares, and `npm update nanoid` cleared both with no
+  override and no build change.
