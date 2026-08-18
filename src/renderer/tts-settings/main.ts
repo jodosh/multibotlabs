@@ -96,7 +96,7 @@ voiceSearchInput.addEventListener('input', renderVoices)
 // Spoken by the Test button. Deliberately mentions the bot rather than being
 // lorem filler, so it's obvious which app produced the audio when several
 // voices are auditioned back to back.
-const TEST_PHRASE = 'MultiBot text to speech is working.'
+const TEST_PHRASE = 'MultiBot text to speech is working. Thanks MultiBot.'
 
 testVoiceButton.addEventListener('click', () => {
   // Reads the live <select> value rather than saved settings, so a voice can
