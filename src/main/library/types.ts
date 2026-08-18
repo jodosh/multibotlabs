@@ -18,6 +18,15 @@ export interface TextReplyCommand {
 export interface ImportSummary {
   importedSounds: number
   importedTextReplies: number
+  // Entries whose trigger the library already has. Counted rather than listed:
+  // re-running the import is normal now, so on a second run this is usually
+  // every entry and would swamp `skipped` with non-problems.
+  alreadyPresent: number
+  // Legacy emotes with no sound ever assigned. emotes.json holds every channel
+  // emote the old app fetched from Twitch, not just the configured ones, so
+  // these are the overwhelming majority and are not a failure of any kind.
+  withoutSound: number
+  // Genuine problems worth showing the user, e.g. a sound file that has moved.
   skipped: string[]
 }
 

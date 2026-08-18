@@ -20,6 +20,8 @@ export interface LegacyImportStatus {
 export interface LegacySoundsImportSummary {
   importedSounds: number
   importedTextReplies: number
+  alreadyPresent: number
+  withoutSound: number
   skipped: string[]
 }
 
