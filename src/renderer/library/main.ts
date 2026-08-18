@@ -39,6 +39,7 @@ let userIntrosEnabledState = false
 // Tracked so the Text Replies tab can warn about a shadowed "!commands" reply
 // even when its list was rendered before the checkbox above the tabs changed.
 let allowUserListState = false
+let ttsCommandEnabledState = false
 
 // Full lists from the main process, cached so the filter boxes can re-render
 // instantly on every keystroke instead of round-tripping over IPC each time.
@@ -187,18 +188,34 @@ function renderTextReplies(replies: TextReplyDto[], warningFor?: (reply: TextRep
 
 function soundCommandWarning(sound: SoundTriggerDto): string | null {
   if (kind !== 'command') return null
-  if (!userIntrosEnabledState) return null
-  if (normalizeCommandText(sound.trigger).toLowerCase() !== 'intro') return null
-  return 'This command will never trigger — "!intro" is reserved by User Intros, which is enabled on the User Intros tab.'
+  const trigger = normalizeCommandText(sound.trigger).toLowerCase()
+
+  if (userIntrosEnabledState && trigger === 'intro') {
+    return 'This command will never trigger — "!intro" is reserved by User Intros, which is enabled on the User Intros tab.'
+  }
+
+  if (ttsCommandEnabledState && trigger === 'tts') {
+    return 'This command will never trigger — "!tts" is reserved by Text-To-Speech while free TTS is on (right-click the Text-To-Speech tile to change it).'
+  }
+
+  return null
 }
 
 // Unlike a sound command, a text reply named "!commands" IS shadowed — the
 // built-in command list is sent from the same slot a text reply would use,
 // and commandModule.ts skips the text-reply lookup entirely when it fires.
 function textReplyWarning(reply: TextReplyDto): string | null {
-  if (!allowUserListState) return null
-  if (normalizeCommandText(reply.command).toLowerCase() !== 'commands') return null
-  return 'This text reply will never trigger — "!commands" is reserved for the built-in command list, enabled above the tabs.'
+  const command = normalizeCommandText(reply.command).toLowerCase()
+
+  if (allowUserListState && command === 'commands') {
+    return 'This text reply will never trigger — "!commands" is reserved for the built-in command list, enabled above the tabs.'
+  }
+
+  if (ttsCommandEnabledState && command === 'tts') {
+    return 'This text reply will never trigger — "!tts" is reserved by Text-To-Speech while free TTS is on (right-click the Text-To-Speech tile to change it).'
+  }
+
+  return null
 }
 
 function matchesFilter(text: string, query: string): boolean {
@@ -303,6 +320,15 @@ if (kind === 'command') {
     renderFilteredTextReplies()
   })
   void loadTextReplies()
+
+  // Read once on open. The TTS window can flip this while the Library is
+  // already up, so it's a snapshot — same as the free-TTS window's own
+  // conflict warning, which likewise re-checks only when it opens.
+  void window.library.getTtsCommandEnabled().then((value) => {
+    ttsCommandEnabledState = value
+    renderFilteredSounds()
+    renderFilteredTextReplies()
+  })
 
   void window.library.getUserIntrosEnabled().then((value) => {
     enableIntrosInput.checked = value

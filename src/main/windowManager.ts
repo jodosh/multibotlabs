@@ -116,14 +116,20 @@ export function createLibraryWindow(kind: LibraryWindowKind, onClose: () => void
 // Opened rarely, via right-click on the Text-to-Speech HUD tile. Same
 // frameless pattern as the Library windows, just a simpler form (no tabs,
 // no file handling).
+//
+// Resizable, like the AtMe and Media windows and unlike the rest of the
+// simple forms: the voice picker is a list, and on Linux it's a list of
+// ~15,000 entries, so a fixed height that suits a few dozen macOS voices is
+// the wrong shape for the same window elsewhere. The renderer lets the list
+// absorb the extra height. It was previously 320px tall and fixed, which
+// clipped everything below the voice list outright.
 export function createTtsSettingsWindow(onClose: () => void, hudWindow?: BrowserWindow): BrowserWindow {
-  const width = 380
-  const height = 320
+  const width = 420
+  const height = 560
 
   const win = new BrowserWindow({
     width,
     height,
-    resizable: false,
     frame: false,
     title: 'MultiBot Text-To-Speech Settings',
     icon: appIcon(),
@@ -183,8 +189,8 @@ export function createMediaWindow(onClose: () => void, hudWindow?: BrowserWindow
   return win
 }
 
-// Opened via right-click on the Celebration HUD tile. Small fixed form like
-// the TTS settings window — the fireworks themselves render in OBS, not here.
+// Opened via right-click on the Celebration HUD tile. Small fixed form — the
+// fireworks themselves render in OBS, not here.
 export function createCelebrationWindow(onClose: () => void, hudWindow?: BrowserWindow): BrowserWindow {
   const width = 560
   const height = 480

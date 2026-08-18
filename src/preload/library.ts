@@ -37,6 +37,9 @@ const libraryApi = {
   setAllowUserList: (value: boolean): Promise<void> => ipcRenderer.invoke('library:set-allow-user-list', value),
 
   getUserIntrosEnabled: (): Promise<boolean> => ipcRenderer.invoke('library:get-user-intros-enabled'),
+  // Read-only here: the toggle itself lives in the TTS settings window, this
+  // window only needs it to flag entries the !tts reservation shadows.
+  getTtsCommandEnabled: (): Promise<boolean> => ipcRenderer.invoke('library:get-tts-command-enabled'),
   setUserIntrosEnabled: (value: boolean): Promise<void> => ipcRenderer.invoke('library:set-user-intros-enabled', value),
 
   close: (): void => ipcRenderer.send('window:close')

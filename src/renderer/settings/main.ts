@@ -1,4 +1,10 @@
-import type { SettingsApi, AuthStatus, BotSummary, LegacyImportStatus } from '../../preload/settings'
+import type {
+  SettingsApi,
+  AuthStatus,
+  BotSummary,
+  LegacyImportStatus,
+  LegacySoundsImportSummary
+} from '../../preload/settings'
 
 declare global {
   interface Window {
@@ -16,6 +22,7 @@ const legacyMediaRow = document.getElementById('legacy-media-row') as HTMLLIElem
 const importSoundsButton = document.getElementById('import-sounds-button') as HTMLButtonElement
 const importMediaButton = document.getElementById('import-media-button') as HTMLButtonElement
 const legacyImportSummary = document.getElementById('legacy-import-summary') as HTMLParagraphElement
+const legacyImportSkipped = document.getElementById('legacy-import-skipped') as HTMLPreElement
 
 closeButton.addEventListener('click', () => {
   window.settingsApi.close()
@@ -138,14 +145,52 @@ async function loadLegacyImportStatus(): Promise<void> {
   renderLegacyImportStatus(await window.settingsApi.getLegacyImportStatus())
 }
 
+// The old emotes.json lists every channel emote, so a run routinely reports
+// thousands of entries that never had a sound — reported as a count, since
+// they are normal rather than problems. Only genuine failures are listed.
+function describeSoundsImport(summary: LegacySoundsImportSummary): string {
+  const parts = [
+    `Imported ${summary.importedSounds} sound(s), ${summary.importedTextReplies} text repl${
+      summary.importedTextReplies === 1 ? 'y' : 'ies'
+    }.`
+  ]
+  if (summary.alreadyPresent > 0) parts.push(`${summary.alreadyPresent} already in your library.`)
+  if (summary.withoutSound > 0) parts.push(`${summary.withoutSound} had no sound assigned.`)
+  if (summary.skipped.length > 0) parts.push(`Skipped ${summary.skipped.length}:`)
+  return parts.join(' ')
+}
+
+// Failures go in their own scrollable block rather than joined into the
+// summary line: a moved sounds folder means one entry per command, which as
+// a single paragraph pushes the rest of the window off-screen.
+function renderSkipped(skipped: string[]): void {
+  legacyImportSkipped.textContent = skipped.join('\n')
+  legacyImportSkipped.hidden = skipped.length === 0
+}
+
+// The Settings window is taller than its frame and scrolls, and the import
+// result renders at the very bottom — without this the button appears to do
+// nothing at all, since the report lands below the fold. Targets the failure
+// list when there is one: it sits below the summary, so scrolling to the
+// summary alone would leave the failures off-screen.
+function revealImportResult(): void {
+  const last = legacyImportSkipped.hidden ? legacyImportSummary : legacyImportSkipped
+  last.scrollIntoView({ block: 'end', behavior: 'smooth' })
+}
+
 importSoundsButton.addEventListener('click', () => {
   void (async () => {
     importSoundsButton.disabled = true
-    const summary = await window.settingsApi.importLegacySounds()
-    const skippedNote = summary.skipped.length > 0 ? ` Skipped ${summary.skipped.length}: ${summary.skipped.join('; ')}` : ''
-    legacyImportSummary.textContent = `Imported ${summary.importedSounds} sound(s), ${summary.importedTextReplies} text repl${
-      summary.importedTextReplies === 1 ? 'y' : 'ies'
-    }.${skippedNote}`
+    try {
+      const summary = await window.settingsApi.importLegacySounds()
+      legacyImportSummary.textContent = describeSoundsImport(summary)
+      renderSkipped(summary.skipped)
+      revealImportResult()
+    } finally {
+      // Re-enabled so a run that failed part-way can be retried without
+      // reopening the window.
+      importSoundsButton.disabled = false
+    }
     await loadLegacyImportStatus()
   })()
 })
@@ -153,9 +198,16 @@ importSoundsButton.addEventListener('click', () => {
 importMediaButton.addEventListener('click', () => {
   void (async () => {
     importMediaButton.disabled = true
-    const summary = await window.settingsApi.importLegacyMedia()
-    const skippedNote = summary.skipped.length > 0 ? ` Skipped ${summary.skipped.length}: ${summary.skipped.join('; ')}` : ''
-    legacyImportSummary.textContent = `Imported ${summary.imported} media item(s).${skippedNote}`
+    try {
+      const summary = await window.settingsApi.importLegacyMedia()
+      legacyImportSummary.textContent = `Imported ${summary.imported} media item(s).${
+        summary.skipped.length > 0 ? ` Skipped ${summary.skipped.length}:` : ''
+      }`
+      renderSkipped(summary.skipped)
+      revealImportResult()
+    } finally {
+      importMediaButton.disabled = false
+    }
     await loadLegacyImportStatus()
   })()
 })

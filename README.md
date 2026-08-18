@@ -62,6 +62,19 @@ scene, and it composites with real transparency.
 
 - Windows, macOS (Apple Silicon), or Linux
 - [Node.js](https://nodejs.org/) 20+
+- **Linux only, for the Text-To-Speech bot:** the speech-dispatcher daemon and
+  at least one voice. Windows and macOS reach their system voices with no extra
+  setup. Without it the app runs fine, but the TTS voice list comes up empty and
+  the bot stays silent.
+
+  ```bash
+  # Arch
+  sudo pacman -S speech-dispatcher espeak-ng
+  # Debian/Ubuntu
+  sudo apt install speech-dispatcher espeak-ng
+  ```
+
+  Check it works outside the app with `spd-say -L`, which should list voices.
 
 ## Getting started
 

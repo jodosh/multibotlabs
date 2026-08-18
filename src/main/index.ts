@@ -17,7 +17,7 @@ import {
 import { ModuleManager } from './modules/moduleManager'
 import { TwitchChatClient } from './modules/twitchChatClient'
 import { LiveStudioAudienceModule } from './modules/liveStudioAudienceModule'
-import { TextToSpeechModule } from './modules/textToSpeechModule'
+import { TextToSpeechModule, TTS_COMMAND } from './modules/textToSpeechModule'
 import { CommandModule } from './modules/commandModule'
 import { EmoteModule } from './modules/emoteModule'
 import { AtMeModule, type AtMeQueueItem } from './modules/atMeModule'
@@ -41,6 +41,25 @@ import type { SoundTriggerKind } from './library/types'
 // so Chromium's default autoplay policy silently blocks audio.play() there
 // otherwise — must be set before the app is ready.
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
+
+// Chromium ships its speech-dispatcher integration off by default on Linux,
+// so speechSynthesis reports zero voices and the Text-To-Speech bot is
+// silently dead there — the voice dropdown just comes up empty. Enabling it
+// is what `--enable-speech-dispatcher` on the command line does; setting it
+// here means a normally-launched build behaves the same as one started from
+// a terminal with that flag. Also must be set before the app is ready.
+//
+// Linux-only on purpose: speech-dispatcher doesn't exist on Windows or
+// macOS, which reach their system voices through their own backends and
+// need no switch. The flag would be inert there, but scoping it keeps it
+// from reading as something those platforms depend on.
+//
+// This needs the speech-dispatcher daemon (`speechd`) plus at least one
+// voice package installed on the machine; without them the switch is
+// harmless but the voice list stays empty. See README.
+if (process.platform === 'linux') {
+  app.commandLine.appendSwitch('enable-speech-dispatcher')
+}
 
 interface ModuleSummary {
   id: string
@@ -350,6 +369,7 @@ async function registerModules(): Promise<void> {
     () => currentSettings.twitch.accessToken,
     () => currentSettings.modules.command.allowUserList,
     () => currentSettings.modules.command.userIntrosEnabled,
+    () => currentSettings.modules.textToSpeech.freeCommandEnabled,
     playTriggerSound
   )
 
@@ -659,9 +679,22 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle('tts-settings:get', () => currentSettings.modules.textToSpeech)
 
+  // Reports Command-bot entries the free !tts command would shadow, so the
+  // TTS window can warn about them. Checked live on each open rather than
+  // cached: the Library window can add a !tts entry at any time.
+  ipcMain.handle('tts-settings:command-conflicts', () => {
+    const matches = (text: string): boolean =>
+      (text.startsWith('!') ? text.slice(1) : text).trim().toLowerCase() === TTS_COMMAND
+
+    return {
+      sounds: soundLibrary.listSounds('command').filter((sound) => matches(sound.trigger)).length,
+      textReplies: soundLibrary.listTextReplies().filter((reply) => matches(reply.command)).length
+    }
+  })
+
   ipcMain.handle(
     'tts-settings:set',
-    async (_event, patch: Partial<{ enabled: boolean; minimumBits: number; voiceName: string }>) => {
+    async (_event, patch: Partial<{ enabled: boolean; minimumBits: number; voiceName: string; freeCommandEnabled: boolean }>) => {
       currentSettings.modules.textToSpeech = { ...currentSettings.modules.textToSpeech, ...patch }
       await settingsStore.save(currentSettings)
     }
@@ -732,6 +765,8 @@ function registerIpcHandlers(): void {
   })
 
   ipcMain.handle('library:get-user-intros-enabled', () => currentSettings.modules.command.userIntrosEnabled)
+
+  ipcMain.handle('library:get-tts-command-enabled', () => currentSettings.modules.textToSpeech.freeCommandEnabled)
 
   ipcMain.handle('library:set-user-intros-enabled', async (_event, value: boolean) => {
     currentSettings.modules.command.userIntrosEnabled = value

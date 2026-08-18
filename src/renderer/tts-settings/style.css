@@ -2,13 +2,25 @@
 @import '../assets/theme.css';
 @import '../assets/titlebar.css';
 
+/* Column layout so the voice list takes whatever height the window has left,
+   rather than the window growing a strip of dead space under a fixed-height
+   list. The 20px padding is what titlebar.css's negative margins assume. */
 body {
   font-family: 'Space Mono', ui-monospace, monospace;
   margin: 0;
   padding: 20px;
+  height: 100vh;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
   background: var(--color-bg);
   color: var(--color-text);
   color-scheme: dark;
+}
+
+/* Everything keeps its natural height; only the voice list below flexes. */
+body > * {
+  flex: none;
 }
 
 label {
@@ -30,4 +42,79 @@ select {
   border-radius: 4px;
   font-size: 13px;
   font-family: inherit;
+}
+
+button {
+  padding: 6px 14px;
+  background: var(--color-button-bg);
+  border: none;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+button:hover {
+  background: var(--color-button-bg-hover);
+}
+
+/* The blanket `input, select` rule above stretches every control to the full
+   window width, which turns a checkbox into an absurd full-width box. Scope
+   it back for the checkbox row, which lays out inline with its text. */
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 16px;
+  font-size: 13px;
+}
+
+.checkbox input {
+  display: inline;
+  width: auto;
+  margin: 0;
+}
+
+.conflict-warning {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border: 1px solid var(--color-status-error);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--color-status-error) 12%, var(--color-surface));
+  color: var(--color-text);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* Overrides the blanket `input, select` rule above: the filter sits directly
+   over the voice list, so it reads as one control with it rather than as
+   another full-width field with a gap under it. */
+.search {
+  margin-bottom: 6px;
+}
+
+/* Keeps the button content-width: the body is a flex column, and flex children
+   stretch across the cross axis by default, which turned this into a full-width
+   bar reading like a primary action. Scoped to this button rather than to
+   `button`, which would also catch the titlebar's close button and shove it to
+   the top of a flex row that centers it. */
+#test-voice-button {
+  align-self: flex-start;
+}
+
+/* The note belongs to the list above it, so the list gives up its own bottom
+   margin and the note carries the spacing to the next control. The min-height
+   keeps a few rows visible if the window is dragged very short; the size="8"
+   attribute only sets the initial height, which flex then overrides. */
+#voice {
+  flex: 1 1 auto;
+  min-height: 96px;
+  margin-bottom: 4px;
+}
+
+.field-note {
+  margin: 0 0 16px;
+  font-size: 11px;
+  color: var(--color-text-muted);
 }

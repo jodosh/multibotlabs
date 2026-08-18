@@ -15,7 +15,17 @@
     <input id="min-bits" type="number" min="0" />
 
     <label for="voice">Voice</label>
-    <select id="voice"></select>
+    <input id="voice-search" class="search" type="search" placeholder="Filter voices…" />
+    <select id="voice" size="8"></select>
+    <p id="voice-count" class="field-note"></p>
+
+    <button id="test-voice-button">Test voice</button>
+
+    <label class="checkbox">
+      <input id="free-command" type="checkbox" /> Let viewers type !tts to speak for free
+    </label>
+
+    <p id="free-command-conflict" class="conflict-warning" hidden></p>
 
     <script type="module" src="./main.ts"></script>
   </body>

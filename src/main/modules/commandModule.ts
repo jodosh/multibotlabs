@@ -3,6 +3,7 @@ import type { TwitchChatClient, ChatMessageEvent } from './twitchChatClient'
 import type { SoundLibrary } from '../library/soundLibrary'
 import type { PlaybackQueue } from '../library/playbackQueue'
 import type { PlayTriggerSoundFn } from '../library/types'
+import { TTS_COMMAND } from './textToSpeechModule'
 
 const MAX_CHAT_MESSAGE_LENGTH = 500
 
@@ -42,6 +43,7 @@ export class CommandModule implements IBotModule {
     private readonly accessToken: () => string,
     private readonly allowUserList: () => boolean,
     private readonly userIntrosEnabled: () => boolean,
+    private readonly ttsCommandEnabled: () => boolean,
     private readonly playTriggerSound: PlayTriggerSoundFn
   ) {}
 
@@ -89,6 +91,11 @@ export class CommandModule implements IBotModule {
       this.tryPlayUserIntro(event.username)
       return
     }
+
+    // Same reservation as !intro above, for the other direction: while free
+    // TTS is on, textToSpeechModule.ts answers !tts, so anything configured
+    // here under that name must stand down rather than fire alongside it.
+    if (firstWord === TTS_COMMAND && this.ttsCommandEnabled()) return
 
     // A sound command and a text reply are independent — a streamer can use
     // the same !command name for both and expect both to fire, the same way

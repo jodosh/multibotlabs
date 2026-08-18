@@ -115,3 +115,22 @@ button:disabled {
 #legacy-import-summary {
   margin-top: 10px;
 }
+
+/* Import failures, one per line. Capped and scrollable: a moved sounds folder
+   produces one line per command, which would otherwise push the rest of the
+   Settings window off-screen. */
+.import-skipped {
+  max-height: 120px;
+  overflow-y: auto;
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-input-border);
+  border-radius: 6px;
+  color: var(--color-text-muted);
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
