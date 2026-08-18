@@ -74,3 +74,22 @@ button:hover {
   font-size: 12px;
   line-height: 1.4;
 }
+
+/* Overrides the blanket `input, select` rule above: the filter sits directly
+   over the voice list, so it reads as one control with it rather than as
+   another full-width field with a gap under it. */
+.search {
+  margin-bottom: 6px;
+}
+
+/* The note belongs to the list above it, so the list gives up its own bottom
+   margin and the note carries the spacing to the next control. */
+#voice {
+  margin-bottom: 4px;
+}
+
+.field-note {
+  margin: 0 0 16px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
