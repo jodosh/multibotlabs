@@ -1,4 +1,10 @@
-import type { LibraryApi, SoundTriggerDto, SoundTriggerKind, TextReplyDto } from '../../preload/library'
+import type {
+  AddSoundResultDto,
+  LibraryApi,
+  SoundTriggerDto,
+  SoundTriggerKind,
+  TextReplyDto
+} from '../../preload/library'
 import { promptModal, alertModal } from '../assets/modal'
 
 declare global {
@@ -261,14 +267,30 @@ soundSearchInput.addEventListener('input', renderFilteredSounds)
 textSearchInput.addEventListener('input', renderFilteredTextReplies)
 introSearchInput.addEventListener('input', renderFilteredIntros)
 
+// The sound is already added at this point — this is a heads-up, not a
+// failure. Said plainly because the effect is audible: an un-normalized sound
+// can be noticeably louder or quieter than the rest of the library, and the
+// row's volume slider is the fix.
+async function warnIfNotNormalized(result: AddSoundResultDto): Promise<void> {
+  if (result.normalized) return
+  await alertModal(
+    `"${result.sound.trigger}" was added, but its volume could not be matched to your other sounds ` +
+      '— ffmpeg is missing from this install, so the file was added as-is. ' +
+      "It may play louder or quieter than the rest; use the row's volume slider to adjust it, " +
+      'and reinstalling MultiBot should restore the matching.'
+  )
+}
+
 async function addSound(): Promise<void> {
   const promptLabel = kind === 'command' ? 'Command name (e.g. !hello):' : 'Emote name (e.g. PogChamp):'
   const trigger = await promptModal(promptLabel)
   if (!trigger) return
 
   try {
-    const sound = await window.library.addSoundFromDialog(kind, trigger, 0.5)
-    if (sound) await loadSounds()
+    const result = await window.library.addSoundFromDialog(kind, trigger, 0.5)
+    if (!result) return
+    await loadSounds()
+    await warnIfNotNormalized(result)
   } catch (error) {
     await alertModal(`Could not add sound: ${error instanceof Error ? error.message : String(error)}`)
   }
@@ -293,8 +315,10 @@ async function addIntro(): Promise<void> {
   if (!username) return
 
   try {
-    const sound = await window.library.addSoundFromDialog('user-intro', username, 0.5)
-    if (sound) await loadIntros()
+    const result = await window.library.addSoundFromDialog('user-intro', username, 0.5)
+    if (!result) return
+    await loadIntros()
+    await warnIfNotNormalized(result)
   } catch (error) {
     await alertModal(`Could not add intro: ${error instanceof Error ? error.message : String(error)}`)
   }

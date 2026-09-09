@@ -2,8 +2,8 @@ import { app } from 'electron'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
-import { normalizeAudio } from './ffmpeg'
-import type { SoundTrigger, SoundTriggerKind, TextReplyCommand } from './types'
+import { normalizeAudio, FfmpegUnavailableError } from './ffmpeg'
+import type { AddSoundResult, SoundTrigger, SoundTriggerKind, TextReplyCommand } from './types'
 
 async function readJsonArray<T>(filePath: string): Promise<T[]> {
   try {
@@ -49,23 +49,51 @@ export class SoundLibrary {
   }
 
   // Used by the "+ Add Sound" UI flow: normalizes the picked file via ffmpeg.
-  async addSound(kind: SoundTriggerKind, trigger: string, sourceFilePath: string, volume: number): Promise<SoundTrigger> {
+  //
+  // If ffmpeg isn't available the sound is still added, just copied verbatim
+  // instead of loudness-matched. Refusing outright left streamers unable to add
+  // any sound at all when antivirus quarantined the bundled binary, which is a
+  // worse outcome than one sound sitting louder or quieter than its neighbours
+  // — and that one is fixable from the row's volume slider. `normalized` in the
+  // result is what lets the UI say so rather than failing silently.
+  async addSound(
+    kind: SoundTriggerKind,
+    trigger: string,
+    sourceFilePath: string,
+    volume: number
+  ): Promise<AddSoundResult> {
     await fs.mkdir(this.audioDir, { recursive: true })
     const id = randomUUID()
-    const outputPath = path.join(this.audioDir, `${id}.mp3`)
-    await normalizeAudio(sourceFilePath, outputPath)
+
+    let filePath = path.join(this.audioDir, `${id}.mp3`)
+    let normalized = true
+
+    try {
+      await normalizeAudio(sourceFilePath, filePath)
+    } catch (error) {
+      // Anything else — a corrupt file, an unsupported codec — is a real
+      // failure the streamer needs to see, so it still propagates.
+      if (!(error instanceof FfmpegUnavailableError)) throw error
+
+      // Keep the source extension: main/index.ts derives the playback MIME
+      // type from it, so copying a .wav to a .mp3 name would produce a data:
+      // URL the playback window can't decode.
+      filePath = path.join(this.audioDir, `${id}${path.extname(sourceFilePath)}`)
+      await fs.copyFile(sourceFilePath, filePath)
+      normalized = false
+    }
 
     const entry: SoundTrigger = {
       id,
       kind,
       trigger,
       fileName: path.basename(sourceFilePath),
-      filePath: outputPath,
+      filePath,
       volume
     }
     this.sounds.push(entry)
     await this.saveSounds()
-    return entry
+    return { sound: entry, normalized }
   }
 
   // Used by legacy import: the old app already normalized these files, so

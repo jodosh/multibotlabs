@@ -15,6 +15,14 @@ export interface TextReplyCommand {
   reply: string
 }
 
+// addSound() can succeed without ffmpeg having run, so it reports whether the
+// file was loudness-matched to the rest of the library rather than just
+// handing back the entry.
+export interface AddSoundResult {
+  sound: SoundTrigger
+  normalized: boolean
+}
+
 export interface ImportSummary {
   importedSounds: number
   importedTextReplies: number

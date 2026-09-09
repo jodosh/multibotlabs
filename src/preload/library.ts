@@ -11,6 +11,13 @@ export interface SoundTriggerDto {
   volume: number
 }
 
+// `normalized: false` means ffmpeg was unavailable and the file was added as-is,
+// so its loudness won't match the rest of the library.
+export interface AddSoundResultDto {
+  sound: SoundTriggerDto
+  normalized: boolean
+}
+
 export interface TextReplyDto {
   id: string
   command: string
@@ -19,7 +26,7 @@ export interface TextReplyDto {
 
 const libraryApi = {
   listSounds: (kind: SoundTriggerKind): Promise<SoundTriggerDto[]> => ipcRenderer.invoke('library:list-sounds', kind),
-  addSoundFromDialog: (kind: SoundTriggerKind, trigger: string, volume: number): Promise<SoundTriggerDto | null> =>
+  addSoundFromDialog: (kind: SoundTriggerKind, trigger: string, volume: number): Promise<AddSoundResultDto | null> =>
     ipcRenderer.invoke('library:add-sound-from-dialog', kind, trigger, volume),
   updateSound: (id: string, patch: Partial<Pick<SoundTriggerDto, 'trigger' | 'volume'>>): Promise<void> =>
     ipcRenderer.invoke('library:update-sound', id, patch),
