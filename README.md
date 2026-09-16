@@ -106,6 +106,11 @@ resources/     # bundled sounds, sprites, and audio used by the built-in bots
 See `CLAUDE.md` for a detailed architectural walkthrough, and `ADDBOT.md` for a
 step-by-step guide to adding a new bot.
 
+## Privacy & Security
+
+- **[Privacy Policy](./docs/PRIVACY.md)** — What data MultiBot collects and how it's handled.
+- **[OAuth Flow](./docs/OAUTH_FLOW.md)** — Technical details on why implicit grant auth is secure for desktop apps.
+
 ## License
 
 MIT — see [`LICENSE`](LICENSE). A couple of bundled/third-party items carry their own
