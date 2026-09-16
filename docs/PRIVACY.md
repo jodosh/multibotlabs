@@ -73,10 +73,6 @@ The app does **not** send data to, or integrate with, any third-party services s
 
 When you choose to import data from the old .NET MultiBot app, your app reads files from your local disk only (`%APPDATA%\MultiBot\commands.json`, etc.). This data is imported directly into your local MultiBot storage. No data is sent anywhere during import.
 
-## Update Checks
-
-Your app may connect to GitHub Releases to check if a newer version is available. This is a simple metadata request (checking the latest version number). It does **not** send any information about your system, configuration, or usage. We cannot see this traffic.
-
 ## Your Rights
 
 - **Access:** All your data is in plaintext JSON in your userData directory. You can read/edit/delete it anytime.
