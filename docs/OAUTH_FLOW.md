@@ -119,9 +119,9 @@ Submitting this document to your AV vendor shows you're using a well-known, docu
 
 ## References
 
-- [Twitch OAuth Documentation](https://dev.twitch.tv/docs/authentication)
-- [OAuth 2.0 Implicit Grant Flow (RFC 6749)](https://tools.ietf.org/html/rfc6749#section-4.2)
-- [Why Implicit Grant Should Be Avoided](https://auth0.com/blog/oauth-2-deprecates-implicit-flow/) (for web apps, not relevant for desktop; web apps have different constraints)
+- [Twitch OAuth Documentation](https://dev.twitch.tv/docs/authentication) — Twitch's official OAuth guide
+- [OAuth 2.0 for Native Apps (RFC 8252)](https://tools.ietf.org/html/rfc8252) — IETF standard for how native/desktop apps should handle OAuth. Section 4.3 discusses the implicit flow and its use in public clients (apps without a backend)
+- [OAuth 2.0 Authorization Request (RFC 6749, Section 4.1.1)](https://tools.ietf.org/html/rfc6749#section-4.1.1) — The original OAuth 2.0 spec defining response_type and flow selection
 
 ## Implementation Details
 
