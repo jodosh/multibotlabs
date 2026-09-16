@@ -4,13 +4,29 @@
 
 ## Overview
 
-MultiBot is a desktop Twitch bot toolkit that runs locally on your computer. We believe privacy is fundamental, and this document explains exactly what data the app collects, stores, and sends.
+MultiBot is a desktop Twitch bot toolkit that runs locally on your computer. We believe privacy is fundamental, and this document explains exactly what data the app handles and what we (the MultiBot maintainers) can and cannot access.
 
-**TL;DR:** MultiBot stores everything locally on your machine. We never collect telemetry, never send logs to servers, never sell data. The only network requests are to Twitch's official servers for authentication and chat.
+**Most important:** We have **zero visibility** into your data, your settings, or your usage. The app runs on your machine, not ours. We cannot see, access, or receive any of the information described below.
 
-## Data the App Collects
+**TL;DR:** MultiBot stores everything locally on your machine. We have no telemetry, no crash reporting, no analytics, no way to access your data. The only network traffic is the app connecting directly to Twitch's official servers for authentication and chat.
 
-### Local Storage (on your computer, encrypted at rest by your OS)
+## What We (the Maintainers) Can and Cannot Access
+
+- ✗ We **cannot** see your Twitch auth token or any credentials
+- ✗ We **cannot** see your bot settings or configuration
+- ✗ We **cannot** see your sound library or audio files
+- ✗ We **cannot** see your chat history or gameplay data (Coinks scores, etc.)
+- ✗ We **cannot** see when you use the app or which features you use
+- ✗ We **cannot** see your system, IP address, or device information
+- ✓ We **can** read the open-source code to understand how it works
+- ✓ We **can** accept bug reports and feature requests you voluntarily send
+- ✓ We **can** see GitHub issues and discussions you choose to post
+
+## What the App Does (On Your Machine)
+
+The app running on your computer handles the following information. **This data never leaves your machine and we cannot access it:**
+
+### Local Storage (on your computer, never sent anywhere)
 
 - **Twitch authentication:** OAuth access token, refresh token, login name, user ID, token expiration time
 - **Bot configuration:** which bots are enabled, their individual settings (TTS voice, sound file paths, cooldowns, etc.)
@@ -23,46 +39,43 @@ All of this lives in Electron's userData directory:
 - **macOS:** `~/Library/Application Support/MultiBot/`
 - **Linux:** `~/.config/MultiBot/`
 
-### What We Don't Collect
+## Network Requests Made by the App
 
-- **Telemetry:** no analytics, no crash reporting, no usage tracking
-- **Passwords:** we use OAuth, so we never see or store your Twitch password
-- **Personally identifiable information beyond Twitch:** your real name, email, IP address, or device identifiers are never collected
-- **Stream data:** we don't record or upload your streams, VODs, or chat
-- **Audio files:** sound files you upload stay on your machine; we don't copy them to any server
+The app running on your machine makes network requests **only to Twitch's official servers**. We (the maintainers) never receive this traffic — it goes directly from your app to Twitch:
 
-## Network Requests
+1. **Twitch OAuth authentication** — when you click "Connect Twitch"
+   - Your app opens Twitch's official login page
+   - You authenticate directly with Twitch (not through us)
+   - Twitch sends your app an access token
+   - Your app stores the token locally; Twitch does not tell us anything about you
 
-The app makes network requests **only to Twitch's official servers** for:
+2. **Twitch IRC chat connection** — to listen for chat messages
+   - Your app connects directly to Twitch's IRC server
+   - The app reads incoming chat messages to detect triggers (commands, emotes, etc.)
+   - Chat messages stay on your machine; they are not uploaded anywhere
+   - We cannot see this traffic or these messages
 
-1. **OAuth authentication** — redirects to Twitch's login page when you click "Connect Twitch"
-   - You authenticate directly with Twitch (we never see your password)
-   - Twitch redirects back with an access token
-   - We store the token locally; Twitch never tells us anything about it beyond its validity
-
-2. **Chat connection** — connects to Twitch's IRC chat server to listen for messages
-   - We read chat in real-time to trigger bot responses
-   - We don't upload, log, or analyze chat messages
-
-3. **Overlay server** — local HTTP server (127.0.0.1 only)
-   - Runs only on your machine, serves content to OBS Browser Sources
-   - No traffic leaves your network; completely offline-capable
+3. **Local overlay server** (127.0.0.1 only)
+   - The app runs a small HTTP server only on your local machine
+   - OBS Browser Sources load overlay pages from this local server
+   - No traffic leaves your machine; this is completely offline-capable
 
 ## Third-Party Services
 
-MultiBot does **not** integrate with any third-party analytics, crash reporting, or data collection services. It does not use:
-- Google Analytics
+The app does **not** send data to, or integrate with, any third-party services such as:
+- Google Analytics or similar telemetry
 - Sentry or similar crash reporters
 - Marketing pixels or tracking
-- Cloud sync or backup services (unless you manually backup your userData directory)
+- Cloud sync or backup services
+- Any analytics or data collection platform
 
 ## Legacy Import
 
-When importing sound data from the old .NET MultiBot app, we read files from your local disk only (`%APPDATA%\MultiBot\commands.json`, etc.). No data is sent anywhere during import.
+When you choose to import data from the old .NET MultiBot app, your app reads files from your local disk only (`%APPDATA%\MultiBot\commands.json`, etc.). This data is imported directly into your local MultiBot storage. No data is sent anywhere during import.
 
-## Updates
+## Update Checks
 
-The app may check for updates by connecting to GitHub Releases. This is metadata only (checking if a newer version exists); it does **not** send information about your system, configuration, or usage.
+Your app may connect to GitHub Releases to check if a newer version is available. This is a simple metadata request (checking the latest version number). It does **not** send any information about your system, configuration, or usage. We cannot see this traffic.
 
 ## Your Rights
 
