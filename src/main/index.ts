@@ -27,7 +27,7 @@ import { CelebrationModule } from './modules/celebrationModule'
 import { CoinksModule, type CoinksState } from './modules/coinksModule'
 import { HypeTrainModule, type HypeTrainBattleEvent } from './modules/hypeTrainModule'
 import { HypeTrainEventSub } from './twitch/hypeTrainEventSub'
-import { SettingsStore, type AppSettings } from './settings/settingsStore'
+import { loadSettings, getSettings, saveSettings } from './app/settingsState'
 import { SoundLibrary } from './library/soundLibrary'
 import { MediaLibrary, SUPPORTED_MEDIA_EXTENSIONS, type MediaTrigger } from './library/mediaLibrary'
 import { PlaybackQueue } from './library/playbackQueue'
@@ -94,7 +94,6 @@ let hypeTrainWindow: BrowserWindow | undefined
 let updateDetailsWindow: BrowserWindow | undefined
 const libraryWindows: Partial<Record<LibraryWindowKind, BrowserWindow>> = {}
 
-const settingsStore = new SettingsStore()
 const moduleManager = new ModuleManager()
 const chatClient = new TwitchChatClient()
 const soundLibrary = new SoundLibrary()
@@ -120,7 +119,6 @@ const overlayServer = new OverlayServer(
   hypeAssetsRoot
 )
 
-let currentSettings: AppSettings
 let atMeModule: AtMeModule | undefined
 let coinksModule: CoinksModule | undefined
 let hypeTrainModule: HypeTrainModule | undefined
@@ -136,12 +134,12 @@ interface PendingUpdate {
 let pendingUpdate: PendingUpdate | undefined
 
 function authStatus(): AuthStatus {
-  return { loggedIn: Boolean(currentSettings.twitch.accessToken), login: currentSettings.twitch.login }
+  return { loggedIn: Boolean(getSettings().twitch.accessToken), login: getSettings().twitch.login }
 }
 
 function orderedVisibleModules(): IBotModule[] {
-  const hidden = new Set(currentSettings.bots.hidden)
-  const order = currentSettings.bots.order
+  const hidden = new Set(getSettings().bots.hidden)
+  const order = getSettings().bots.order
   return moduleManager
     .list()
     .filter((module) => !hidden.has(module.id))
@@ -158,8 +156,8 @@ function summarize(modules: IBotModule[]): ModuleSummary[] {
 }
 
 function summarizeAllBots(): BotSummary[] {
-  const hidden = new Set(currentSettings.bots.hidden)
-  const order = currentSettings.bots.order
+  const hidden = new Set(getSettings().bots.hidden)
+  const order = getSettings().bots.order
   return moduleManager
     .list()
     .sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id))
@@ -175,9 +173,9 @@ function broadcastModules(): void {
 // longer exist need to be dropped so the list doesn't grow stale forever.
 function reconcileBotOrder(): void {
   const allIds = moduleManager.list().map((module) => module.id)
-  const known = new Set(currentSettings.bots.order)
+  const known = new Set(getSettings().bots.order)
   const missing = allIds.filter((id) => !known.has(id))
-  currentSettings.bots.order = [...currentSettings.bots.order.filter((id) => allIds.includes(id)), ...missing]
+  getSettings().bots.order = [...getSettings().bots.order.filter((id) => allIds.includes(id)), ...missing]
 }
 
 // tmi.js won't pick up new credentials on an already-open connection, so
@@ -251,7 +249,7 @@ function overlayStatus(): {
   return {
     status: overlayServer.status,
     url: overlayServer.overlayUrl(),
-    port: overlayServer.port || currentSettings.modules.mediaGif.overlayPort,
+    port: overlayServer.port || getSettings().modules.mediaGif.overlayPort,
     clients: overlayServer.clientCount('media'),
     error: overlayServer.lastError
   }
@@ -275,7 +273,7 @@ function broadcastCelebrationOverlayStatus(): void {
 }
 
 function startFireworks(shells: number): void {
-  overlayServer.broadcast({ type: 'celebration:fireworks', shells, volume: currentSettings.modules.celebration.volume })
+  overlayServer.broadcast({ type: 'celebration:fireworks', shells, volume: getSettings().modules.celebration.volume })
 }
 
 function coinksOverlayStatus(): { status: string; url: string; clients: number; error?: string } {
@@ -301,7 +299,7 @@ function broadcastCoinksState(state: CoinksState): void {
 // for the rest of the battle, same as Celebration/Coinks).
 function broadcastHypeTrainBattleEvent(event: HypeTrainBattleEvent): void {
   if (event.type === 'hypetrain:begin') {
-    overlayServer.broadcast({ ...event, volume: currentSettings.modules.hypeTrain.volume })
+    overlayServer.broadcast({ ...event, volume: getSettings().modules.hypeTrain.volume })
   } else {
     overlayServer.broadcast(event)
   }
@@ -344,16 +342,16 @@ function playMedia(entry: MediaTrigger): void {
 async function registerModules(): Promise<void> {
   const liveStudioAudience = new LiveStudioAudienceModule(
     chatClient,
-    () => currentSettings.twitch.login,
-    () => currentSettings.twitch.accessToken,
+    () => getSettings().twitch.login,
+    () => getSettings().twitch.accessToken,
     playSound
   )
 
   const textToSpeech = new TextToSpeechModule(
     chatClient,
-    () => currentSettings.twitch.login,
-    () => currentSettings.twitch.accessToken,
-    () => currentSettings.modules.textToSpeech,
+    () => getSettings().twitch.login,
+    () => getSettings().twitch.accessToken,
+    () => getSettings().modules.textToSpeech,
     speak
   )
 
@@ -361,11 +359,11 @@ async function registerModules(): Promise<void> {
     chatClient,
     soundLibrary,
     playbackQueue,
-    () => currentSettings.twitch.login,
-    () => currentSettings.twitch.accessToken,
-    () => currentSettings.modules.command.allowUserList,
-    () => currentSettings.modules.command.userIntrosEnabled,
-    () => currentSettings.modules.textToSpeech.freeCommandEnabled,
+    () => getSettings().twitch.login,
+    () => getSettings().twitch.accessToken,
+    () => getSettings().modules.command.allowUserList,
+    () => getSettings().modules.command.userIntrosEnabled,
+    () => getSettings().modules.textToSpeech.freeCommandEnabled,
     playTriggerSound
   )
 
@@ -373,16 +371,16 @@ async function registerModules(): Promise<void> {
     chatClient,
     soundLibrary,
     playbackQueue,
-    () => currentSettings.twitch.login,
-    () => currentSettings.twitch.accessToken,
+    () => getSettings().twitch.login,
+    () => getSettings().twitch.accessToken,
     playTriggerSound
   )
 
   const atMe = new AtMeModule(
     chatClient,
-    () => currentSettings.twitch.login,
-    () => currentSettings.twitch.accessToken,
-    () => currentSettings.modules.atMe,
+    () => getSettings().twitch.login,
+    () => getSettings().twitch.accessToken,
+    () => getSettings().modules.atMe,
     (queue) => atMeQueueWindow?.webContents.send('atme:queue-changed', queue)
   )
   atMeModule = atMe
@@ -390,16 +388,16 @@ async function registerModules(): Promise<void> {
   const mediaGif = new MediaGifModule(
     chatClient,
     mediaLibrary,
-    () => currentSettings.twitch.login,
-    () => currentSettings.twitch.accessToken,
+    () => getSettings().twitch.login,
+    () => getSettings().twitch.accessToken,
     playMedia
   )
 
   const celebration = new CelebrationModule(
     chatClient,
-    () => currentSettings.twitch.login,
-    () => currentSettings.twitch.accessToken,
-    () => currentSettings.modules.celebration,
+    () => getSettings().twitch.login,
+    () => getSettings().twitch.accessToken,
+    () => getSettings().modules.celebration,
     startFireworks
   )
 
@@ -411,16 +409,16 @@ async function registerModules(): Promise<void> {
   moduleManager.register(mediaGif)
   const coinks = new CoinksModule(
     chatClient,
-    () => currentSettings.twitch.login,
-    () => currentSettings.twitch.accessToken,
-    () => currentSettings.modules.coinks,
+    () => getSettings().twitch.login,
+    () => getSettings().twitch.accessToken,
+    () => getSettings().modules.coinks,
     () => overlayServer.clientCount('coinks') > 0,
     (player, coinCount) =>
       overlayServer.broadcast({
         type: 'coinks:start',
         player,
         coins: coinCount,
-        volume: currentSettings.modules.coinks.volume
+        volume: getSettings().modules.coinks.volume
       }),
     () => overlayServer.broadcast({ type: 'coinks:throw' }),
     broadcastCoinksState
@@ -432,51 +430,51 @@ async function registerModules(): Promise<void> {
 
   const hypeTrain = new HypeTrainModule(
     hypeTrainEventSub,
-    () => currentSettings.twitch.userId,
-    () => currentSettings.twitch.accessToken,
+    () => getSettings().twitch.userId,
+    () => getSettings().twitch.accessToken,
     broadcastHypeTrainBattleEvent
   )
   hypeTrainModule = hypeTrain
   moduleManager.register(hypeTrain)
 
-  await moduleManager.setEnabled(liveStudioAudience.id, currentSettings.modules.liveStudioAudience.enabled)
-  await moduleManager.setEnabled(textToSpeech.id, currentSettings.modules.textToSpeech.enabled)
-  await moduleManager.setEnabled(command.id, currentSettings.modules.command.enabled)
-  await moduleManager.setEnabled(emote.id, currentSettings.modules.emote.enabled)
-  await moduleManager.setEnabled(atMe.id, currentSettings.modules.atMe.enabled)
-  await moduleManager.setEnabled(mediaGif.id, currentSettings.modules.mediaGif.enabled)
-  await moduleManager.setEnabled(celebration.id, currentSettings.modules.celebration.enabled)
-  await moduleManager.setEnabled(coinks.id, currentSettings.modules.coinks.enabled)
-  await moduleManager.setEnabled(hypeTrain.id, currentSettings.modules.hypeTrain.enabled)
+  await moduleManager.setEnabled(liveStudioAudience.id, getSettings().modules.liveStudioAudience.enabled)
+  await moduleManager.setEnabled(textToSpeech.id, getSettings().modules.textToSpeech.enabled)
+  await moduleManager.setEnabled(command.id, getSettings().modules.command.enabled)
+  await moduleManager.setEnabled(emote.id, getSettings().modules.emote.enabled)
+  await moduleManager.setEnabled(atMe.id, getSettings().modules.atMe.enabled)
+  await moduleManager.setEnabled(mediaGif.id, getSettings().modules.mediaGif.enabled)
+  await moduleManager.setEnabled(celebration.id, getSettings().modules.celebration.enabled)
+  await moduleManager.setEnabled(coinks.id, getSettings().modules.coinks.enabled)
+  await moduleManager.setEnabled(hypeTrain.id, getSettings().modules.hypeTrain.enabled)
 }
 
 function syncSettingsFromModules(): void {
   const liveStudioAudience = moduleManager.get('live-studio-audience')
-  if (liveStudioAudience) currentSettings.modules.liveStudioAudience.enabled = liveStudioAudience.enabled
+  if (liveStudioAudience) getSettings().modules.liveStudioAudience.enabled = liveStudioAudience.enabled
 
   const textToSpeech = moduleManager.get('text-to-speech')
-  if (textToSpeech) currentSettings.modules.textToSpeech.enabled = textToSpeech.enabled
+  if (textToSpeech) getSettings().modules.textToSpeech.enabled = textToSpeech.enabled
 
   const command = moduleManager.get('command')
-  if (command) currentSettings.modules.command.enabled = command.enabled
+  if (command) getSettings().modules.command.enabled = command.enabled
 
   const emote = moduleManager.get('emote')
-  if (emote) currentSettings.modules.emote.enabled = emote.enabled
+  if (emote) getSettings().modules.emote.enabled = emote.enabled
 
   const atMe = moduleManager.get('at-me')
-  if (atMe) currentSettings.modules.atMe.enabled = atMe.enabled
+  if (atMe) getSettings().modules.atMe.enabled = atMe.enabled
 
   const mediaGif = moduleManager.get('media-gif')
-  if (mediaGif) currentSettings.modules.mediaGif.enabled = mediaGif.enabled
+  if (mediaGif) getSettings().modules.mediaGif.enabled = mediaGif.enabled
 
   const celebration = moduleManager.get('celebration')
-  if (celebration) currentSettings.modules.celebration.enabled = celebration.enabled
+  if (celebration) getSettings().modules.celebration.enabled = celebration.enabled
 
   const coinks = moduleManager.get('coinks')
-  if (coinks) currentSettings.modules.coinks.enabled = coinks.enabled
+  if (coinks) getSettings().modules.coinks.enabled = coinks.enabled
 
   const hypeTrain = moduleManager.get('hype-train')
-  if (hypeTrain) currentSettings.modules.hypeTrain.enabled = hypeTrain.enabled
+  if (hypeTrain) getSettings().modules.hypeTrain.enabled = hypeTrain.enabled
 }
 
 function toggleLibraryWindow(kind: LibraryWindowKind): void {
@@ -573,7 +571,7 @@ function registerIpcHandlers(): void {
 
     await moduleManager.setEnabled(id, !module.enabled)
     syncSettingsFromModules()
-    await settingsStore.save(currentSettings)
+    await saveSettings()
     broadcastModules()
 
     return summarize(orderedVisibleModules())
@@ -635,17 +633,17 @@ function registerIpcHandlers(): void {
   ipcMain.handle('settings:login', async () => {
     const result = await twitchAuth.login(hudWindow)
     if (result) {
-      currentSettings.twitch = result
-      await settingsStore.save(currentSettings)
+      getSettings().twitch = result
+      await saveSettings()
       await reconnectEnabledModules()
     }
     return authStatus()
   })
 
   ipcMain.handle('settings:logout', async () => {
-    await twitchAuth.logout(currentSettings.twitch.accessToken)
-    currentSettings.twitch = { accessToken: '', login: '', userId: '', expiresAt: 0 }
-    await settingsStore.save(currentSettings)
+    await twitchAuth.logout(getSettings().twitch.accessToken)
+    getSettings().twitch = { accessToken: '', login: '', userId: '', expiresAt: 0 }
+    await saveSettings()
     await reconnectEnabledModules()
     return authStatus()
   })
@@ -653,17 +651,17 @@ function registerIpcHandlers(): void {
   ipcMain.handle('settings:get-bots', () => summarizeAllBots())
 
   ipcMain.handle('settings:set-bot-order', async (_event, order: string[]) => {
-    currentSettings.bots.order = order
-    await settingsStore.save(currentSettings)
+    getSettings().bots.order = order
+    await saveSettings()
     broadcastModules()
   })
 
   ipcMain.handle('settings:set-bot-hidden', async (_event, id: string, hidden: boolean) => {
-    const set = new Set(currentSettings.bots.hidden)
+    const set = new Set(getSettings().bots.hidden)
     if (hidden) set.add(id)
     else set.delete(id)
-    currentSettings.bots.hidden = [...set]
-    await settingsStore.save(currentSettings)
+    getSettings().bots.hidden = [...set]
+    await saveSettings()
     broadcastModules()
   })
 
@@ -673,25 +671,25 @@ function registerIpcHandlers(): void {
   // import has actually been run, so re-running it can't duplicate entries.
   ipcMain.handle('settings:get-legacy-import-status', async () => ({
     dirExists: await legacyDataExists(),
-    soundsImported: currentSettings.legacyImport.soundsImported,
-    mediaImported: currentSettings.legacyImport.mediaImported
+    soundsImported: getSettings().legacyImport.soundsImported,
+    mediaImported: getSettings().legacyImport.mediaImported
   }))
 
   ipcMain.handle('settings:import-legacy-sounds', async () => {
     const summary = await importLegacyData(soundLibrary)
-    currentSettings.legacyImport.soundsImported = true
-    await settingsStore.save(currentSettings)
+    getSettings().legacyImport.soundsImported = true
+    await saveSettings()
     return summary
   })
 
   ipcMain.handle('settings:import-legacy-media', async () => {
     const summary = await mediaLibrary.importLegacy()
-    currentSettings.legacyImport.mediaImported = true
-    await settingsStore.save(currentSettings)
+    getSettings().legacyImport.mediaImported = true
+    await saveSettings()
     return summary
   })
 
-  ipcMain.handle('tts-settings:get', () => currentSettings.modules.textToSpeech)
+  ipcMain.handle('tts-settings:get', () => getSettings().modules.textToSpeech)
 
   // Reports Command-bot entries the free !tts command would shadow, so the
   // TTS window can warn about them. Checked live on each open rather than
@@ -709,8 +707,8 @@ function registerIpcHandlers(): void {
   ipcMain.handle(
     'tts-settings:set',
     async (_event, patch: Partial<{ enabled: boolean; minimumBits: number; voiceName: string; freeCommandEnabled: boolean }>) => {
-      currentSettings.modules.textToSpeech = { ...currentSettings.modules.textToSpeech, ...patch }
-      await settingsStore.save(currentSettings)
+      getSettings().modules.textToSpeech = { ...getSettings().modules.textToSpeech, ...patch }
+      await saveSettings()
     }
   )
 
@@ -771,33 +769,33 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle('library:remove-text-reply', (_event, id: string) => soundLibrary.removeTextReply(id))
 
-  ipcMain.handle('library:get-allow-user-list', () => currentSettings.modules.command.allowUserList)
+  ipcMain.handle('library:get-allow-user-list', () => getSettings().modules.command.allowUserList)
 
   ipcMain.handle('library:set-allow-user-list', async (_event, value: boolean) => {
-    currentSettings.modules.command.allowUserList = value
-    await settingsStore.save(currentSettings)
+    getSettings().modules.command.allowUserList = value
+    await saveSettings()
   })
 
-  ipcMain.handle('library:get-user-intros-enabled', () => currentSettings.modules.command.userIntrosEnabled)
+  ipcMain.handle('library:get-user-intros-enabled', () => getSettings().modules.command.userIntrosEnabled)
 
-  ipcMain.handle('library:get-tts-command-enabled', () => currentSettings.modules.textToSpeech.freeCommandEnabled)
+  ipcMain.handle('library:get-tts-command-enabled', () => getSettings().modules.textToSpeech.freeCommandEnabled)
 
   ipcMain.handle('library:set-user-intros-enabled', async (_event, value: boolean) => {
-    currentSettings.modules.command.userIntrosEnabled = value
-    await settingsStore.save(currentSettings)
+    getSettings().modules.command.userIntrosEnabled = value
+    await saveSettings()
   })
 
   ipcMain.handle('atme:get-settings', () => ({
-    matchMentions: currentSettings.modules.atMe.matchMentions,
-    matchHighlights: currentSettings.modules.atMe.matchHighlights,
-    togglesCollapsed: currentSettings.modules.atMe.togglesCollapsed
+    matchMentions: getSettings().modules.atMe.matchMentions,
+    matchHighlights: getSettings().modules.atMe.matchHighlights,
+    togglesCollapsed: getSettings().modules.atMe.togglesCollapsed
   }))
 
   ipcMain.handle(
     'atme:set-settings',
     async (_event, patch: Partial<{ matchMentions: boolean; matchHighlights: boolean; togglesCollapsed: boolean }>) => {
-      currentSettings.modules.atMe = { ...currentSettings.modules.atMe, ...patch }
-      await settingsStore.save(currentSettings)
+      getSettings().modules.atMe = { ...getSettings().modules.atMe, ...patch }
+      await saveSettings()
     }
   )
 
@@ -841,38 +839,38 @@ function registerIpcHandlers(): void {
   ipcMain.handle('media:overlay-status', () => overlayStatus())
 
   ipcMain.handle('celebration:get-settings', () => ({
-    bitsPrice: currentSettings.modules.celebration.bitsPrice,
-    commandEnabled: currentSettings.modules.celebration.commandEnabled,
-    shellCount: currentSettings.modules.celebration.shellCount,
-    volume: currentSettings.modules.celebration.volume
+    bitsPrice: getSettings().modules.celebration.bitsPrice,
+    commandEnabled: getSettings().modules.celebration.commandEnabled,
+    shellCount: getSettings().modules.celebration.shellCount,
+    volume: getSettings().modules.celebration.volume
   }))
 
   ipcMain.handle(
     'celebration:set-settings',
     async (_event, patch: Partial<{ bitsPrice: number; commandEnabled: boolean; shellCount: number; volume: number }>) => {
-      currentSettings.modules.celebration = { ...currentSettings.modules.celebration, ...patch }
-      await settingsStore.save(currentSettings)
+      getSettings().modules.celebration = { ...getSettings().modules.celebration, ...patch }
+      await saveSettings()
     }
   )
 
   ipcMain.handle('celebration:test', () => {
-    startFireworks(currentSettings.modules.celebration.shellCount)
+    startFireworks(getSettings().modules.celebration.shellCount)
   })
 
   ipcMain.handle('celebration:overlay-status', () => celebrationOverlayStatus())
 
   ipcMain.handle('coinks:get-settings', () => ({
-    bitsPrice: currentSettings.modules.coinks.bitsPrice,
-    commandEnabled: currentSettings.modules.coinks.commandEnabled,
-    coinsPerGame: currentSettings.modules.coinks.coinsPerGame,
-    volume: currentSettings.modules.coinks.volume
+    bitsPrice: getSettings().modules.coinks.bitsPrice,
+    commandEnabled: getSettings().modules.coinks.commandEnabled,
+    coinsPerGame: getSettings().modules.coinks.coinsPerGame,
+    volume: getSettings().modules.coinks.volume
   }))
 
   ipcMain.handle(
     'coinks:set-settings',
     async (_event, patch: Partial<{ bitsPrice: number; commandEnabled: boolean; coinsPerGame: number; volume: number }>) => {
-      currentSettings.modules.coinks = { ...currentSettings.modules.coinks, ...patch }
-      await settingsStore.save(currentSettings)
+      getSettings().modules.coinks = { ...getSettings().modules.coinks, ...patch }
+      await saveSettings()
     }
   )
 
@@ -887,12 +885,12 @@ function registerIpcHandlers(): void {
   ipcMain.handle('coinks:overlay-status', () => coinksOverlayStatus())
 
   ipcMain.handle('hype-train:get-settings', () => ({
-    volume: currentSettings.modules.hypeTrain.volume
+    volume: getSettings().modules.hypeTrain.volume
   }))
 
   ipcMain.handle('hype-train:set-settings', async (_event, patch: Partial<{ volume: number }>) => {
-    currentSettings.modules.hypeTrain = { ...currentSettings.modules.hypeTrain, ...patch }
-    await settingsStore.save(currentSettings)
+    getSettings().modules.hypeTrain = { ...getSettings().modules.hypeTrain, ...patch }
+    await saveSettings()
   })
 
   ipcMain.handle('hype-train:test', () => {
@@ -905,16 +903,16 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle('media:set-port', async (_event, port: number) => {
     if (Number.isInteger(port) && port >= 1024 && port <= 65535 && port !== overlayServer.port) {
-      currentSettings.modules.mediaGif.overlayPort = port
-      await settingsStore.save(currentSettings)
+      getSettings().modules.mediaGif.overlayPort = port
+      await saveSettings()
       await overlayServer.start(port)
     }
     return overlayStatus()
   })
 
   ipcMain.on('updates:dismiss', async (_event, version: string) => {
-    currentSettings.updates.dismissedVersion = version
-    await settingsStore.save(currentSettings)
+    getSettings().updates.dismissedVersion = version
+    await saveSettings()
     // The badge only disappears once dismissal is confirmed here, rather than
     // optimistically in the renderer, so a HUD restart before this save
     // lands can't leave the badge permanently hidden for an update that was
@@ -925,11 +923,11 @@ function registerIpcHandlers(): void {
     hudWindow?.webContents.send('updates:dismissed')
   })
 
-  ipcMain.handle('updates:get-enabled', () => currentSettings.updates.enabled)
+  ipcMain.handle('updates:get-enabled', () => getSettings().updates.enabled)
 
   ipcMain.handle('updates:set-enabled', async (_event, enabled: boolean) => {
-    currentSettings.updates.enabled = enabled
-    await settingsStore.save(currentSettings)
+    getSettings().updates.enabled = enabled
+    await saveSettings()
   })
 
   ipcMain.on('hud:open-update-details', () => {
@@ -944,11 +942,11 @@ function registerIpcHandlers(): void {
 }
 
 async function checkForUpdatesOnStartup(): Promise<void> {
-  if (!currentSettings.updates.enabled) {
+  if (!getSettings().updates.enabled) {
     return
   }
 
-  const lastCheck = currentSettings.updates.lastCheckTime ?? 0
+  const lastCheck = getSettings().updates.lastCheckTime ?? 0
   const hoursSinceLastCheck = (Date.now() - lastCheck) / (1000 * 60 * 60)
   if (hoursSinceLastCheck < 12) {
     return
@@ -957,7 +955,7 @@ async function checkForUpdatesOnStartup(): Promise<void> {
   updateChecker = new UpdateChecker(app.getVersion())
   const result = await updateChecker.checkForUpdates()
 
-  if (result.updateAvailable && result.latest && result.latest.version !== currentSettings.updates.dismissedVersion) {
+  if (result.updateAvailable && result.latest && result.latest.version !== getSettings().updates.dismissedVersion) {
     pendingUpdate = {
       current: result.current,
       latest: result.latest.version,
@@ -967,8 +965,8 @@ async function checkForUpdatesOnStartup(): Promise<void> {
     hudWindow?.webContents.send('updates:available')
   }
 
-  currentSettings.updates.lastCheckTime = Date.now()
-  await settingsStore.save(currentSettings)
+  getSettings().updates.lastCheckTime = Date.now()
+  await saveSettings()
 }
 
 app.whenReady().then(async () => {
@@ -978,7 +976,7 @@ app.whenReady().then(async () => {
     app.dock?.setIcon(join(resourcesRoot(), 'icon.png'))
   }
 
-  currentSettings = await settingsStore.load()
+  await loadSettings()
   await soundLibrary.load()
   await mediaLibrary.load()
   await coinksScores.load()
@@ -986,12 +984,12 @@ app.whenReady().then(async () => {
   registerIpcHandlers()
   await registerModules()
   reconcileBotOrder()
-  await settingsStore.save(currentSettings)
+  await saveSettings()
 
   // Started independently of whether the Media bot is enabled, so the streamer
   // can add the browser source in OBS and see it connect before turning the bot
   // on. It's an idle localhost listener until something broadcasts.
-  await overlayServer.start(currentSettings.modules.mediaGif.overlayPort)
+  await overlayServer.start(getSettings().modules.mediaGif.overlayPort)
 
   playbackWindow = createPlaybackWindow()
   hudWindow = createHudWindow()
