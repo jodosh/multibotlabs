@@ -3,6 +3,7 @@ import { join, extname, basename } from 'node:path'
 import { readFile } from 'node:fs/promises'
 import type { LibraryWindowKind } from './windowManager'
 import { registerIpcHandlers as registerExtractedIpc } from './ipc'
+import { playSound, playTriggerSound, speak } from './audio/playbackBridge'
 import * as windows from './windows/windowRegistry'
 import {
   overlayServer,
@@ -155,53 +156,6 @@ async function reconnectEnabledModules(): Promise<void> {
 
   for (const id of enabledIds) await moduleManager.setEnabled(id, false)
   for (const id of enabledIds) await moduleManager.setEnabled(id, true)
-}
-
-const AUDIO_MIME_TYPES: Record<string, string> = {
-  '.mp3': 'audio/mpeg',
-  '.wav': 'audio/wav',
-  '.ogg': 'audio/ogg',
-  '.m4a': 'audio/mp4',
-  '.aac': 'audio/aac',
-  '.flac': 'audio/flac',
-  '.opus': 'audio/opus',
-  '.webm': 'audio/webm',
-  '.weba': 'audio/webm'
-}
-
-// Sent as a data: URL rather than a file:// path — the playback window's
-// page is loaded from Vite's dev server (http://localhost) in `npm run dev`
-// and from file:// in a built/packaged run. Chromium blocks a file://
-// resource load from an http:// page ("Media load rejected by URL safety
-// check"), so file:// only ever worked by coincidence when testing the
-// built app. A data: URL is just embedded content, not a filesystem
-// reference, so it's unaffected by the page's origin either way.
-async function sendPlaySound(filePath: string, volume: number): Promise<void> {
-  try {
-    const buffer = await readFile(filePath)
-    const mimeType = AUDIO_MIME_TYPES[extname(filePath).toLowerCase()] ?? 'application/octet-stream'
-    const dataUrl = `data:${mimeType};base64,${buffer.toString('base64')}`
-    windows.sendPlayback('playback:play-sound', dataUrl, volume)
-  } catch (error) {
-    console.error('[playback] failed to read sound file:', filePath, error)
-  }
-}
-
-// Bundled reaction sounds (Live Studio Audience), addressed by filename
-// under resources/sounds/. Distinct from playTriggerSound below.
-function playSound(fileName: string): void {
-  const filePath = join(resourcesRoot(), 'sounds', fileName)
-  void sendPlaySound(filePath, 1)
-}
-
-// User-added library sounds (Command/Emote), addressed by absolute path
-// under userData/sounds/.
-function playTriggerSound(filePath: string, volume: number): void {
-  void sendPlaySound(filePath, volume)
-}
-
-function speak(text: string, voiceName: string): void {
-  windows.sendPlayback('playback:speak', text, voiceName)
 }
 
 async function registerModules(): Promise<void> {
@@ -492,62 +446,6 @@ function registerIpcHandlers(): void {
     getSettings().legacyImport.mediaImported = true
     await saveSettings()
     return summary
-  })
-
-  ipcMain.handle('library:list-sounds', (_event, kind: SoundTriggerKind) => soundLibrary.listSounds(kind))
-
-  ipcMain.handle('library:add-sound-from-dialog', async (event, kind: SoundTriggerKind, trigger: string, volume: number) => {
-    const parentWindow = BrowserWindow.fromWebContents(event.sender)
-    const dialogOptions: Electron.OpenDialogOptions = {
-      properties: ['openFile'],
-      filters: [{ name: 'Audio', extensions: ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac', 'opus', 'webm', 'weba'] }]
-    }
-    // Tied to the Library window that opened it — an untied dialog can open
-    // unfocused or behind the parent window on some Linux window managers.
-    const result = parentWindow
-      ? await dialog.showOpenDialog(parentWindow, dialogOptions)
-      : await dialog.showOpenDialog(dialogOptions)
-    if (result.canceled || result.filePaths.length === 0) return null
-
-    return soundLibrary.addSound(kind, trigger, result.filePaths[0], volume)
-  })
-
-  ipcMain.handle('library:update-sound', (_event, id: string, patch: { trigger?: string; volume?: number }) =>
-    soundLibrary.updateSound(id, patch)
-  )
-
-  ipcMain.handle('library:remove-sound', (_event, id: string) => soundLibrary.removeSound(id))
-
-  ipcMain.on('library:preview-sound', (_event, filePath: string, volume: number) => {
-    playTriggerSound(filePath, volume)
-  })
-
-  ipcMain.handle('library:list-text-replies', () => soundLibrary.listTextReplies())
-
-  ipcMain.handle('library:add-text-reply', (_event, command: string, reply: string) =>
-    soundLibrary.addTextReply(command, reply)
-  )
-
-  ipcMain.handle('library:update-text-reply', (_event, id: string, patch: { command?: string; reply?: string }) =>
-    soundLibrary.updateTextReply(id, patch)
-  )
-
-  ipcMain.handle('library:remove-text-reply', (_event, id: string) => soundLibrary.removeTextReply(id))
-
-  ipcMain.handle('library:get-allow-user-list', () => getSettings().modules.command.allowUserList)
-
-  ipcMain.handle('library:set-allow-user-list', async (_event, value: boolean) => {
-    getSettings().modules.command.allowUserList = value
-    await saveSettings()
-  })
-
-  ipcMain.handle('library:get-user-intros-enabled', () => getSettings().modules.command.userIntrosEnabled)
-
-  ipcMain.handle('library:get-tts-command-enabled', () => getSettings().modules.textToSpeech.freeCommandEnabled)
-
-  ipcMain.handle('library:set-user-intros-enabled', async (_event, value: boolean) => {
-    getSettings().modules.command.userIntrosEnabled = value
-    await saveSettings()
   })
 
   ipcMain.on('updates:dismiss', async (_event, version: string) => {

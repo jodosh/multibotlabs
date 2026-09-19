@@ -5,6 +5,7 @@ import { registerCoinksIpc } from './coinks'
 import { registerHypeTrainIpc } from './hypeTrain'
 import { registerTtsIpc } from './tts'
 import { registerMediaIpc } from './media'
+import { registerLibraryIpc } from './library'
 
 // Registers every IPC handler, grouped one module per channel namespace.
 //
@@ -24,4 +25,5 @@ export function registerIpcHandlers(): void {
   registerHypeTrainIpc()
   registerTtsIpc()
   registerMediaIpc()
+  registerLibraryIpc()
 }
