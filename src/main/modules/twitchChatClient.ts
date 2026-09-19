@@ -1,5 +1,6 @@
 import { EventEmitter } from 'node:events'
 import tmi from 'tmi.js'
+import { describeError } from './describeError'
 
 export interface ChatMessageEvent {
   channel: string
@@ -22,10 +23,18 @@ export type ChatClientStatus = 'disconnected' | 'connecting' | 'connected'
 export class TwitchChatClient extends EventEmitter {
   private client: tmi.Client | undefined
   private _status: ChatClientStatus = 'disconnected'
+  private _lastError: string | undefined
   private refCount = 0
 
   get status(): ChatClientStatus {
     return this._status
+  }
+
+  // Mirrors OverlayServer.lastError: the descriptive message this class already
+  // builds for the console is worth keeping, so a failed connection can be
+  // explained rather than just counted.
+  get lastError(): string | undefined {
+    return this._lastError
   }
 
   async acquire(channel: string, accessToken: string): Promise<void> {
@@ -44,7 +53,9 @@ export class TwitchChatClient extends EventEmitter {
     // would leak a reference and keep the connection alive past the last
     // release().
     if (!channel.trim()) {
-      throw new Error('No Twitch channel — log in on the Settings window first.')
+      const message = 'No Twitch channel — log in on the Settings window first.'
+      this._lastError = message
+      throw new Error(message)
     }
 
     this.refCount += 1
@@ -60,6 +71,7 @@ export class TwitchChatClient extends EventEmitter {
   }
 
   private async connect(channel: string, accessToken: string): Promise<void> {
+    this._lastError = undefined
     this._status = 'connecting'
     this.emit('status', this._status)
 
@@ -101,11 +113,9 @@ export class TwitchChatClient extends EventEmitter {
     } catch (error) {
       this.client = undefined
       this._status = 'disconnected'
+      this._lastError = `Connection failed — check the access token is valid/unexpired and has chat:read/chat:edit scope: ${describeError(error)}`
       this.emit('status', this._status)
-      console.error(
-        '[twitch] connection failed — check the access token is valid/unexpired and has chat:read/chat:edit scope:',
-        error instanceof Error ? error.message : error
-      )
+      console.error('[twitch]', this._lastError)
       throw error
     }
   }

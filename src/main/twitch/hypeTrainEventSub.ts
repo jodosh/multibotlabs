@@ -1,5 +1,6 @@
 import { EventEmitter } from 'node:events'
 import { TWITCH_CLIENT_ID } from '../auth/twitchOAuthConfig'
+import { describeError } from '../modules/describeError'
 
 // Overridable for local testing against `twitch event websocket start-server`
 // (see docs/HYPE_TRAIN_TESTING.md) — its mock server pushes triggered events
@@ -76,11 +77,19 @@ export class HypeTrainEventSub extends EventEmitter {
   private reconnectTimer: NodeJS.Timeout | undefined
   private refCount = 0
   private _status: HypeTrainEventSubStatus = 'disconnected'
+  private _lastError: string | undefined
   private broadcasterUserId = ''
   private accessToken = ''
 
   get status(): HypeTrainEventSubStatus {
     return this._status
+  }
+
+  // Mirrors OverlayServer.lastError. This class already builds the most useful
+  // diagnostic in the app — a 401 here names the exact missing scope — so it is
+  // kept rather than only printed.
+  get lastError(): string | undefined {
+    return this._lastError
   }
 
   async acquire(broadcasterUserId: string, accessToken: string): Promise<void> {
@@ -112,10 +121,8 @@ export class HypeTrainEventSub extends EventEmitter {
       this.setStatus('connected')
     } catch (error) {
       this.setStatus('error')
-      console.error(
-        '[hype-train] EventSub connection failed — check the access token has channel:read:hype_train scope:',
-        error instanceof Error ? error.message : error
-      )
+      this._lastError = `EventSub connection failed — check the access token has channel:read:hype_train scope: ${describeError(error)}`
+      console.error('[hype-train]', this._lastError)
       throw error
     }
   }
@@ -267,7 +274,8 @@ export class HypeTrainEventSub extends EventEmitter {
     if (keepaliveTimeoutSeconds !== undefined) this.keepaliveTimeoutMs = keepaliveTimeoutSeconds * 1000 + KEEPALIVE_MARGIN_MS
     if (this.keepaliveTimer) clearTimeout(this.keepaliveTimer)
     this.keepaliveTimer = setTimeout(() => {
-      console.error('[hype-train] EventSub connection went silent — reconnecting')
+      this._lastError = 'EventSub connection went silent — reconnecting'
+      console.error('[hype-train]', this._lastError)
       this.socket?.close()
     }, this.keepaliveTimeoutMs)
   }

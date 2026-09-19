@@ -18,9 +18,12 @@ function render(modules: ModuleSummary[]): void {
     const tile = document.createElement('button')
     tile.className = `tile ${module.status}${module.enabled ? ' enabled' : ''}`
     tile.textContent = module.displayName
-    tile.title = module.hasManagerWindow
-      ? `${module.displayName} — ${module.status} (right-click to manage)`
-      : `${module.displayName} — ${module.status}`
+    // The failure reason goes on its own line so the tooltip stays readable
+    // when it's long — a token-scope message runs to a full sentence.
+    const hint = module.hasManagerWindow ? ' (right-click to manage)' : ''
+    tile.title = module.lastError
+      ? `${module.displayName} — ${module.status}${hint}\n${module.lastError}`
+      : `${module.displayName} — ${module.status}${hint}`
     tile.addEventListener('click', () => {
       void window.hud.toggleModule(module.id)
     })

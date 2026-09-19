@@ -6,6 +6,7 @@ import type {
   HypeTrainProgressEventPayload,
   HypeTrainEndEventPayload
 } from '../twitch/hypeTrainEventSub'
+import { describeError } from './describeError'
 
 export interface HypeTrainBeginBattleEvent {
   type: 'hypetrain:begin'
@@ -66,6 +67,7 @@ export class HypeTrainModule implements IBotModule {
   enabled = false
 
   private _status: BotModuleStatus = 'stopped'
+  private _lastError: string | undefined
   private active = false
   private level = 1
   private archers = new Map<string, string>() // user_id -> user_name, roster for the current train
@@ -90,12 +92,17 @@ export class HypeTrainModule implements IBotModule {
     return this._status
   }
 
+  get lastError(): string | undefined {
+    return this._lastError
+  }
+
   state(): HypeTrainState {
     return { active: this.active, level: this.level, archerCount: this.archers.size }
   }
 
   async start(): Promise<void> {
     if (this._status === 'running') return
+    this._lastError = undefined
     this._status = 'connecting'
     this.eventSub.on('status', this.onStatus)
     this.eventSub.on('begin', this.onBegin)
@@ -103,7 +110,8 @@ export class HypeTrainModule implements IBotModule {
     this.eventSub.on('end', this.onEnd)
     try {
       await this.eventSub.acquire(this.broadcasterUserId(), this.accessToken())
-    } catch {
+    } catch (error) {
+      this._lastError = describeError(error)
       this._status = 'error'
       this.detachListeners()
       return
@@ -127,6 +135,7 @@ export class HypeTrainModule implements IBotModule {
     if (this._status === 'stopped') return
     this.eventSub.release()
     this.detachListeners()
+    this._lastError = undefined
     this._status = 'stopped'
   }
 

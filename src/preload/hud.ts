@@ -10,6 +10,9 @@ export interface ModuleSummary {
   // in the renderer — a stale copy there shows up as right-click silently
   // doing nothing.
   hasManagerWindow: boolean
+  // Why the module last failed, when status is 'error'. Shown on the tile's
+  // tooltip so a red bot explains itself without opening anything.
+  lastError?: string
 }
 
 const hudApi = {

@@ -1,5 +1,6 @@
 import type { IBotModule, BotModuleStatus } from './types'
 import type { TwitchChatClient, ChatMessageEvent } from './twitchChatClient'
+import { describeError } from './describeError'
 
 export interface CelebrationConfig {
   bitsPrice: number
@@ -28,6 +29,7 @@ export class CelebrationModule implements IBotModule {
   enabled = false
 
   private _status: BotModuleStatus = 'stopped'
+  private _lastError: string | undefined
   private readonly onMessage = (event: ChatMessageEvent): void => this.handleMessage(event)
 
   constructor(
@@ -42,12 +44,18 @@ export class CelebrationModule implements IBotModule {
     return this._status
   }
 
+  get lastError(): string | undefined {
+    return this._lastError
+  }
+
   async start(): Promise<void> {
     if (this._status === 'running') return
+    this._lastError = undefined
     this._status = 'connecting'
     try {
       await this.chatClient.acquire(this.channel(), this.accessToken())
-    } catch {
+    } catch (error) {
+      this._lastError = describeError(error)
       this._status = 'error'
       return
     }
@@ -59,6 +67,7 @@ export class CelebrationModule implements IBotModule {
     if (this._status === 'stopped') return
     this.chatClient.off('message', this.onMessage)
     await this.chatClient.release()
+    this._lastError = undefined
     this._status = 'stopped'
   }
 

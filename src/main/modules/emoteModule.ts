@@ -3,6 +3,7 @@ import type { TwitchChatClient, ChatMessageEvent } from './twitchChatClient'
 import type { SoundLibrary } from '../library/soundLibrary'
 import type { PlaybackQueue } from '../library/playbackQueue'
 import type { PlayTriggerSoundFn } from '../library/types'
+import { describeError } from './describeError'
 
 /**
  * Ported from Emote/EmoteBot.xaml.cs: plays a sound when a configured emote
@@ -18,6 +19,7 @@ export class EmoteModule implements IBotModule {
   enabled = false
 
   private _status: BotModuleStatus = 'stopped'
+  private _lastError: string | undefined
   private readonly onMessage = (event: ChatMessageEvent): void => this.handleMessage(event)
 
   constructor(
@@ -33,12 +35,18 @@ export class EmoteModule implements IBotModule {
     return this._status
   }
 
+  get lastError(): string | undefined {
+    return this._lastError
+  }
+
   async start(): Promise<void> {
     if (this._status === 'running') return
+    this._lastError = undefined
     this._status = 'connecting'
     try {
       await this.chatClient.acquire(this.channel(), this.accessToken())
-    } catch {
+    } catch (error) {
+      this._lastError = describeError(error)
       this._status = 'error'
       return
     }
@@ -50,6 +58,7 @@ export class EmoteModule implements IBotModule {
     if (this._status === 'stopped') return
     this.chatClient.off('message', this.onMessage)
     await this.chatClient.release()
+    this._lastError = undefined
     this._status = 'stopped'
   }
 
