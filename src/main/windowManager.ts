@@ -259,6 +259,31 @@ export function createHypeTrainWindow(onClose: () => void, hudWindow?: BrowserWi
   return win
 }
 
+// Opened via clicking the update badge next to the HUD's settings button.
+// Small fixed form like Celebration/Hype Train — release notes can run long,
+// so unlike those it scrolls internally (see style.css) rather than growing
+// the window to fit.
+export function createUpdateDetailsWindow(onClose: () => void, hudWindow?: BrowserWindow): BrowserWindow {
+  const width = 420
+  const height = 420
+
+  const win = new BrowserWindow({
+    width,
+    height,
+    resizable: false,
+    frame: false,
+    title: 'MultiBot Update Available',
+    icon: appIcon(),
+    ...positionAboveHud(hudWindow, width, height),
+    webPreferences: {
+      preload: join(__dirname, '../preload/updateDetails.js'),
+    }
+  })
+  win.on('closed', onClose)
+  loadRenderer(win, 'update-details')
+  return win
+}
+
 // Shows Twitch's own login/authorize page for the OAuth implicit-grant flow.
 // No preload — the main process intercepts the redirect via webContents
 // navigation events, not renderer JS, so there's no need for an API bridge.

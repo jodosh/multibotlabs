@@ -24,6 +24,7 @@ const barElement = document.getElementById('bar') as HTMLDivElement
 const tilesContainer = document.getElementById('tiles') as HTMLDivElement
 const settingsButton = document.getElementById('settings-button') as HTMLButtonElement
 const closeButton = document.getElementById('close-button') as HTMLButtonElement
+const updateButton = document.getElementById('update-button') as HTMLButtonElement
 
 function render(modules: ModuleSummary[]): void {
   tilesContainer.innerHTML = ''
@@ -68,3 +69,17 @@ closeButton.addEventListener('click', () => {
 
 window.hud.onModulesChanged(render)
 void window.hud.getModules().then(render)
+
+updateButton.addEventListener('click', () => {
+  window.hud.openUpdateDetails()
+})
+
+window.hud.onUpdateAvailable(() => {
+  updateButton.hidden = false
+  window.hud.resizeWindow(Math.ceil(barElement.getBoundingClientRect().width))
+})
+
+window.hud.onUpdateDismissed(() => {
+  updateButton.hidden = true
+  window.hud.resizeWindow(Math.ceil(barElement.getBoundingClientRect().width))
+})

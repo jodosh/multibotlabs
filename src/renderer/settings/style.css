@@ -40,6 +40,11 @@ section {
   padding: 10px 12px;
 }
 
+label.integration-row {
+  cursor: pointer;
+  font-size: 13px;
+}
+
 #twitch-status {
   font-size: 13px;
 }

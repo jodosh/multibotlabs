@@ -97,6 +97,35 @@ body {
   font-size: 15px;
 }
 
+/* Pill-shaped and accent-colored, deliberately unlike both the square tiles
+   and the round settings/close controls, so it doesn't read as "just another
+   bot" or get mistaken for a settings shortcut. Sits in normal flow (not
+   absolutely positioned) — #bar's measured width already drives
+   hud:resize (see main.ts), and unlike a fixed-size window, that resize
+   isn't capped, so a wider bar to fit this button's label is fine. Clicking
+   it opens a small separate window (like every other HUD detail surface),
+   since a popover here would have to render outside the HUD's own tightly-
+   sized, non-resizable window and get clipped by the OS. */
+#update-button {
+  flex: none;
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 16px;
+  border: none;
+  background: var(--color-accent-100);
+  color: var(--color-primary-500);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#update-button:hover {
+  background: var(--color-accent-200);
+}
+
 #close-button {
   font-size: 12px;
   background: rgba(0, 0, 0, 0.2);

@@ -1,4 +1,4 @@
-import { app, ipcMain, dialog, BrowserWindow } from 'electron'
+import { app, ipcMain, dialog, BrowserWindow, shell, screen } from 'electron'
 import { join, extname, basename } from 'node:path'
 import { readFile } from 'node:fs/promises'
 import {
@@ -12,6 +12,7 @@ import {
   createCelebrationWindow,
   createCoinksWindow,
   createHypeTrainWindow,
+  createUpdateDetailsWindow,
   type LibraryWindowKind
 } from './windowManager'
 import { ModuleManager } from './modules/moduleManager'
@@ -33,6 +34,7 @@ import { PlaybackQueue } from './library/playbackQueue'
 import { importLegacyData, legacyDataExists } from './library/legacyImport'
 import { OverlayServer } from './overlay/overlayServer'
 import { CoinksScores } from './library/coinksScores'
+import { UpdateChecker } from './updates/updateChecker'
 import * as twitchAuth from './auth/twitchAuth'
 import type { IBotModule } from './modules/types'
 import type { SoundTriggerKind } from './library/types'
@@ -88,6 +90,7 @@ let mediaWindow: BrowserWindow | undefined
 let celebrationWindow: BrowserWindow | undefined
 let coinksWindow: BrowserWindow | undefined
 let hypeTrainWindow: BrowserWindow | undefined
+let updateDetailsWindow: BrowserWindow | undefined
 const libraryWindows: Partial<Record<LibraryWindowKind, BrowserWindow>> = {}
 
 const settingsStore = new SettingsStore()
@@ -134,6 +137,16 @@ let currentSettings: AppSettings
 let atMeModule: AtMeModule | undefined
 let coinksModule: CoinksModule | undefined
 let hypeTrainModule: HypeTrainModule | undefined
+let updateChecker: UpdateChecker | undefined
+
+interface PendingUpdate {
+  current: string
+  latest: string
+  releaseUrl: string
+  body: string
+}
+
+let pendingUpdate: PendingUpdate | undefined
 
 function resourcesRoot(): string {
   return app.isPackaged ? join(process.resourcesPath, 'resources') : join(app.getAppPath(), 'resources')
@@ -558,6 +571,16 @@ function toggleHypeTrainWindow(): void {
   }, hudWindow)
 }
 
+function openUpdateDetailsWindow(): void {
+  if (updateDetailsWindow) {
+    updateDetailsWindow.focus()
+    return
+  }
+  updateDetailsWindow = createUpdateDetailsWindow(() => {
+    updateDetailsWindow = undefined
+  }, hudWindow)
+}
+
 function registerIpcHandlers(): void {
   ipcMain.handle('hud:get-modules', () => summarize(orderedVisibleModules()))
 
@@ -607,13 +630,21 @@ function registerIpcHandlers(): void {
     app.quit()
   })
 
-  // resizable: false on the HUD only blocks the user dragging its edges —
-  // setBounds() from code still works, which is how the bar shrinks/grows
-  // to match its actual tile count instead of leaving blank space.
+  // Grows/shrinks the HUD to match its actual content (tile count, whether
+  // the update button is showing) instead of leaving blank space or clipping
+  // content. Keeps the right edge fixed and grows/shrinks leftward instead of
+  // the default setBounds() behavior of holding x fixed and extending
+  // rightward — a streamer who's dragged the HUD toward their screen's right
+  // edge (common, to stay clear of capture layout) would otherwise have new
+  // content pushed off-screen the moment the bar needs to grow wider than it
+  // was when they positioned it.
   ipcMain.on('hud:resize', (_event, width: number) => {
     if (!hudWindow) return
     const bounds = hudWindow.getBounds()
-    hudWindow.setBounds({ ...bounds, width })
+    const workArea = screen.getDisplayMatching(bounds).workArea
+    const rightEdge = bounds.x + bounds.width
+    const x = Math.max(rightEdge - width, workArea.x)
+    hudWindow.setBounds({ ...bounds, x, width })
   })
 
   ipcMain.handle('settings:get-auth-status', () => authStatus())
@@ -897,6 +928,64 @@ function registerIpcHandlers(): void {
     }
     return overlayStatus()
   })
+
+  ipcMain.on('updates:dismiss', async (_event, version: string) => {
+    currentSettings.updates.dismissedVersion = version
+    await settingsStore.save(currentSettings)
+    // The badge only disappears once dismissal is confirmed here, rather than
+    // optimistically in the renderer, so a HUD restart before this save
+    // lands can't leave the badge permanently hidden for an update that was
+    // never actually recorded as dismissed.
+    if (pendingUpdate?.latest === version) {
+      pendingUpdate = undefined
+    }
+    hudWindow?.webContents.send('updates:dismissed')
+  })
+
+  ipcMain.handle('updates:get-enabled', () => currentSettings.updates.enabled)
+
+  ipcMain.handle('updates:set-enabled', async (_event, enabled: boolean) => {
+    currentSettings.updates.enabled = enabled
+    await settingsStore.save(currentSettings)
+  })
+
+  ipcMain.on('hud:open-update-details', () => {
+    openUpdateDetailsWindow()
+  })
+
+  ipcMain.handle('update-details:get', () => pendingUpdate)
+
+  ipcMain.on('hud:open-url', (_event, url: string) => {
+    void shell.openExternal(url)
+  })
+}
+
+async function checkForUpdatesOnStartup(): Promise<void> {
+  if (!currentSettings.updates.enabled) {
+    return
+  }
+
+  const lastCheck = currentSettings.updates.lastCheckTime ?? 0
+  const hoursSinceLastCheck = (Date.now() - lastCheck) / (1000 * 60 * 60)
+  if (hoursSinceLastCheck < 12) {
+    return
+  }
+
+  updateChecker = new UpdateChecker(app.getVersion())
+  const result = await updateChecker.checkForUpdates()
+
+  if (result.updateAvailable && result.latest && result.latest.version !== currentSettings.updates.dismissedVersion) {
+    pendingUpdate = {
+      current: result.current,
+      latest: result.latest.version,
+      releaseUrl: result.latest.releaseUrl,
+      body: result.latest.body
+    }
+    hudWindow?.webContents.send('updates:available')
+  }
+
+  currentSettings.updates.lastCheckTime = Date.now()
+  await settingsStore.save(currentSettings)
 }
 
 app.whenReady().then(async () => {
@@ -923,6 +1012,9 @@ app.whenReady().then(async () => {
 
   playbackWindow = createPlaybackWindow()
   hudWindow = createHudWindow()
+
+  // Check for updates after HUD window is created (so we can notify the renderer)
+  void checkForUpdatesOnStartup()
 })
 
 app.on('window-all-closed', () => {

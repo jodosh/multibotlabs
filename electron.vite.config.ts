@@ -26,7 +26,8 @@ export default defineConfig({
           mediaLibrary: resolve(__dirname, 'src/preload/mediaLibrary.ts'),
           celebration: resolve(__dirname, 'src/preload/celebration.ts'),
           coinks: resolve(__dirname, 'src/preload/coinks.ts'),
-          hypeTrain: resolve(__dirname, 'src/preload/hypeTrain.ts')
+          hypeTrain: resolve(__dirname, 'src/preload/hypeTrain.ts'),
+          updateDetails: resolve(__dirname, 'src/preload/updateDetails.ts')
         }
       }
     }
@@ -51,7 +52,8 @@ export default defineConfig({
           coinks: resolve(__dirname, 'src/renderer/coinks/index.html'),
           'overlay-coinks': resolve(__dirname, 'src/renderer/overlay-coinks/index.html'),
           hypetrain: resolve(__dirname, 'src/renderer/hypetrain/index.html'),
-          'overlay-hypetrain': resolve(__dirname, 'src/renderer/overlay-hypetrain/index.html')
+          'overlay-hypetrain': resolve(__dirname, 'src/renderer/overlay-hypetrain/index.html'),
+          'update-details': resolve(__dirname, 'src/renderer/update-details/index.html')
         }
       }
     }

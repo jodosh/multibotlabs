@@ -17,6 +17,11 @@ export interface AppSettings {
     soundsImported: boolean // commands.json/emotes.json/commands_text.json already imported
     mediaImported: boolean // gifMediaCommands.json already imported
   }
+  updates: {
+    enabled: boolean
+    lastCheckTime?: number
+    dismissedVersion?: string
+  }
   modules: {
     textToSpeech: {
       enabled: boolean
@@ -80,6 +85,9 @@ export const defaultSettings: AppSettings = {
   legacyImport: {
     soundsImported: false,
     mediaImported: false
+  },
+  updates: {
+    enabled: true
   },
   modules: {
     textToSpeech: {
@@ -150,6 +158,7 @@ export class SettingsStore {
         twitch: { ...defaultSettings.twitch, ...parsed.twitch },
         bots: { ...defaultSettings.bots, ...parsed.bots },
         legacyImport: { ...defaultSettings.legacyImport, ...parsed.legacyImport },
+        updates: { ...defaultSettings.updates, ...parsed.updates },
         modules: {
           textToSpeech: { ...defaultSettings.modules.textToSpeech, ...parsed.modules?.textToSpeech },
           liveStudioAudience: { ...defaultSettings.modules.liveStudioAudience, ...parsed.modules?.liveStudioAudience },

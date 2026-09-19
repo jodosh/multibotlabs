@@ -13,6 +13,7 @@ declare global {
 }
 
 const closeButton = document.getElementById('close-button') as HTMLButtonElement
+const updatesEnabledCheckbox = document.getElementById('updates-enabled-checkbox') as HTMLInputElement
 const twitchStatus = document.getElementById('twitch-status') as HTMLSpanElement
 const twitchActionButton = document.getElementById('twitch-action-button') as HTMLButtonElement
 const botList = document.getElementById('bot-list') as HTMLUListElement
@@ -27,6 +28,14 @@ const legacyImportSkipped = document.getElementById('legacy-import-skipped') as 
 closeButton.addEventListener('click', () => {
   window.settingsApi.close()
 })
+
+updatesEnabledCheckbox.addEventListener('change', () => {
+  void window.settingsApi.setUpdatesEnabled(updatesEnabledCheckbox.checked)
+})
+
+async function loadUpdatesEnabled(): Promise<void> {
+  updatesEnabledCheckbox.checked = await window.settingsApi.getUpdatesEnabled()
+}
 
 function renderAuthStatus(status: AuthStatus): void {
   twitchActionButton.disabled = false
@@ -215,3 +224,4 @@ importMediaButton.addEventListener('click', () => {
 void loadAuthStatus()
 void loadBots()
 void loadLegacyImportStatus()
+void loadUpdatesEnabled()

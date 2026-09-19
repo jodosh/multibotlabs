@@ -43,6 +43,9 @@ const settingsApi = {
   importLegacySounds: (): Promise<LegacySoundsImportSummary> => ipcRenderer.invoke('settings:import-legacy-sounds'),
   importLegacyMedia: (): Promise<LegacyMediaImportSummary> => ipcRenderer.invoke('settings:import-legacy-media'),
 
+  getUpdatesEnabled: (): Promise<boolean> => ipcRenderer.invoke('updates:get-enabled'),
+  setUpdatesEnabled: (enabled: boolean): Promise<void> => ipcRenderer.invoke('updates:set-enabled', enabled),
+
   close: (): void => ipcRenderer.send('window:close')
 }
 

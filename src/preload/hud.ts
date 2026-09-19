@@ -19,6 +19,17 @@ const hudApi = {
     const listener = (_event: Electron.IpcRendererEvent, modules: ModuleSummary[]): void => callback(modules)
     ipcRenderer.on('hud:modules-changed', listener)
     return () => ipcRenderer.removeListener('hud:modules-changed', listener)
+  },
+  openUpdateDetails: (): void => ipcRenderer.send('hud:open-update-details'),
+  onUpdateAvailable: (callback: () => void): (() => void) => {
+    const listener = (): void => callback()
+    ipcRenderer.on('updates:available', listener)
+    return () => ipcRenderer.removeListener('updates:available', listener)
+  },
+  onUpdateDismissed: (callback: () => void): (() => void) => {
+    const listener = (): void => callback()
+    ipcRenderer.on('updates:dismissed', listener)
+    return () => ipcRenderer.removeListener('updates:dismissed', listener)
   }
 }
 
