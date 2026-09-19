@@ -1,20 +1,8 @@
 import { app, ipcMain, dialog, BrowserWindow, shell, screen } from 'electron'
 import { join, extname, basename } from 'node:path'
 import { readFile } from 'node:fs/promises'
-import {
-  createHudWindow,
-  createPlaybackWindow,
-  createSettingsWindow,
-  createLibraryWindow,
-  createTtsSettingsWindow,
-  createAtMeQueueWindow,
-  createMediaWindow,
-  createCelebrationWindow,
-  createCoinksWindow,
-  createHypeTrainWindow,
-  createUpdateDetailsWindow,
-  type LibraryWindowKind
-} from './windowManager'
+import type { LibraryWindowKind } from './windowManager'
+import * as windows from './windows/windowRegistry'
 import { LiveStudioAudienceModule } from './modules/liveStudioAudienceModule'
 import { TextToSpeechModule, TTS_COMMAND } from './modules/textToSpeechModule'
 import { CommandModule } from './modules/commandModule'
@@ -86,17 +74,6 @@ interface AuthStatus {
   login: string
 }
 
-let hudWindow: BrowserWindow | undefined
-let playbackWindow: BrowserWindow | undefined
-let settingsWindow: BrowserWindow | undefined
-let ttsSettingsWindow: BrowserWindow | undefined
-let atMeQueueWindow: BrowserWindow | undefined
-let mediaWindow: BrowserWindow | undefined
-let celebrationWindow: BrowserWindow | undefined
-let coinksWindow: BrowserWindow | undefined
-let hypeTrainWindow: BrowserWindow | undefined
-let updateDetailsWindow: BrowserWindow | undefined
-const libraryWindows: Partial<Record<LibraryWindowKind, BrowserWindow>> = {}
 
 
 const overlayServer = new OverlayServer(
@@ -159,7 +136,7 @@ function summarizeAllBots(): BotSummary[] {
 }
 
 function broadcastModules(): void {
-  hudWindow?.webContents.send('hud:modules-changed', summarize(orderedVisibleModules()))
+  windows.sendHud('hud:modules-changed', summarize(orderedVisibleModules()))
 }
 
 // New modules registered after settings.json was last saved (or the very
@@ -210,7 +187,7 @@ async function sendPlaySound(filePath: string, volume: number): Promise<void> {
     const buffer = await readFile(filePath)
     const mimeType = AUDIO_MIME_TYPES[extname(filePath).toLowerCase()] ?? 'application/octet-stream'
     const dataUrl = `data:${mimeType};base64,${buffer.toString('base64')}`
-    playbackWindow?.webContents.send('playback:play-sound', dataUrl, volume)
+    windows.sendPlayback('playback:play-sound', dataUrl, volume)
   } catch (error) {
     console.error('[playback] failed to read sound file:', filePath, error)
   }
@@ -230,7 +207,7 @@ function playTriggerSound(filePath: string, volume: number): void {
 }
 
 function speak(text: string, voiceName: string): void {
-  playbackWindow?.webContents.send('playback:speak', text, voiceName)
+  windows.sendPlayback('playback:speak', text, voiceName)
 }
 
 function overlayStatus(): {
@@ -250,7 +227,7 @@ function overlayStatus(): {
 }
 
 function broadcastOverlayStatus(): void {
-  mediaWindow?.webContents.send('media:overlay-status-changed', overlayStatus())
+  windows.send('media', 'media:overlay-status-changed', overlayStatus())
 }
 
 function celebrationOverlayStatus(): { status: string; url: string; clients: number; error?: string } {
@@ -263,7 +240,7 @@ function celebrationOverlayStatus(): { status: string; url: string; clients: num
 }
 
 function broadcastCelebrationOverlayStatus(): void {
-  celebrationWindow?.webContents.send('celebration:overlay-status-changed', celebrationOverlayStatus())
+  windows.send('celebration', 'celebration:overlay-status-changed', celebrationOverlayStatus())
 }
 
 function startFireworks(shells: number): void {
@@ -280,11 +257,11 @@ function coinksOverlayStatus(): { status: string; url: string; clients: number; 
 }
 
 function broadcastCoinksOverlayStatus(): void {
-  coinksWindow?.webContents.send('coinks:overlay-status-changed', coinksOverlayStatus())
+  windows.send('coinks', 'coinks:overlay-status-changed', coinksOverlayStatus())
 }
 
 function broadcastCoinksState(state: CoinksState): void {
-  coinksWindow?.webContents.send('coinks:state-changed', state)
+  windows.send('coinks', 'coinks:state-changed', state)
 }
 
 // Translates HypeTrainModule's battle events into overlay broadcasts — kept
@@ -310,11 +287,11 @@ function hypeTrainOverlayStatus(): { status: string; url: string; clients: numbe
 }
 
 function broadcastHypeTrainOverlayStatus(): void {
-  hypeTrainWindow?.webContents.send('hype-train:overlay-status-changed', hypeTrainOverlayStatus())
+  windows.send('hype-train', 'hype-train:overlay-status-changed', hypeTrainOverlayStatus())
 }
 
 function broadcastHypeTrainState(): void {
-  hypeTrainWindow?.webContents.send('hype-train:state-changed', moduleRefs.hypeTrain?.state())
+  windows.send('hype-train', 'hype-train:state-changed', moduleRefs.hypeTrain?.state())
 }
 
 // Media is addressed by id over HTTP rather than by file path — the overlay
@@ -375,7 +352,7 @@ async function registerModules(): Promise<void> {
     () => getSettings().twitch.login,
     () => getSettings().twitch.accessToken,
     () => getSettings().modules.atMe,
-    (queue) => atMeQueueWindow?.webContents.send('atme:queue-changed', queue)
+    (queue) => windows.send('atme-queue', 'atme:queue-changed', queue)
   )
   moduleRefs.atMe = atMe
 
@@ -472,88 +449,37 @@ function syncSettingsFromModules(): void {
 }
 
 function toggleLibraryWindow(kind: LibraryWindowKind): void {
-  const existing = libraryWindows[kind]
-  if (existing) {
-    existing.close()
-    return
-  }
-  libraryWindows[kind] = createLibraryWindow(
-    kind,
-    () => {
-      delete libraryWindows[kind]
-    },
-    hudWindow
-  )
+  windows.toggle(kind === 'command' ? 'library:command' : 'library:emote')
 }
 
 function toggleTtsSettingsWindow(): void {
-  if (ttsSettingsWindow) {
-    ttsSettingsWindow.close()
-    return
-  }
-  ttsSettingsWindow = createTtsSettingsWindow(() => {
-    ttsSettingsWindow = undefined
-  }, hudWindow)
+  windows.toggle('tts-settings')
 }
 
 function toggleAtMeQueueWindow(): void {
-  if (atMeQueueWindow) {
-    atMeQueueWindow.close()
-    return
-  }
-  atMeQueueWindow = createAtMeQueueWindow(() => {
-    atMeQueueWindow = undefined
-  }, hudWindow)
+  windows.toggle('atme-queue')
 }
 
 function toggleMediaWindow(): void {
-  if (mediaWindow) {
-    mediaWindow.close()
-    return
-  }
-  mediaWindow = createMediaWindow(() => {
-    mediaWindow = undefined
-  }, hudWindow)
+  windows.toggle('media')
 }
 
 function toggleCoinksWindow(): void {
-  if (coinksWindow) {
-    coinksWindow.close()
-    return
-  }
-  coinksWindow = createCoinksWindow(() => {
-    coinksWindow = undefined
-  }, hudWindow)
+  windows.toggle('coinks')
 }
 
 function toggleCelebrationWindow(): void {
-  if (celebrationWindow) {
-    celebrationWindow.close()
-    return
-  }
-  celebrationWindow = createCelebrationWindow(() => {
-    celebrationWindow = undefined
-  }, hudWindow)
+  windows.toggle('celebration')
 }
 
 function toggleHypeTrainWindow(): void {
-  if (hypeTrainWindow) {
-    hypeTrainWindow.close()
-    return
-  }
-  hypeTrainWindow = createHypeTrainWindow(() => {
-    hypeTrainWindow = undefined
-  }, hudWindow)
+  windows.toggle('hype-train')
 }
 
+// Focuses rather than closes when already open — see the note on open/toggle
+// in windowRegistry.ts.
 function openUpdateDetailsWindow(): void {
-  if (updateDetailsWindow) {
-    updateDetailsWindow.focus()
-    return
-  }
-  updateDetailsWindow = createUpdateDetailsWindow(() => {
-    updateDetailsWindow = undefined
-  }, hudWindow)
+  windows.open('update-details')
 }
 
 function registerIpcHandlers(): void {
@@ -572,23 +498,11 @@ function registerIpcHandlers(): void {
   })
 
   ipcMain.on('hud:open-settings', () => {
-    if (settingsWindow) {
-      settingsWindow.focus()
-      return
-    }
-    settingsWindow = createSettingsWindow(() => {
-      settingsWindow = undefined
-    }, hudWindow)
+    windows.open('settings')
   })
 
   ipcMain.on('hud:toggle-settings', () => {
-    if (settingsWindow) {
-      settingsWindow.close()
-      return
-    }
-    settingsWindow = createSettingsWindow(() => {
-      settingsWindow = undefined
-    }, hudWindow)
+    windows.toggle('settings')
   })
 
   ipcMain.on('hud:open-library', (_event, id: string) => {
@@ -614,18 +528,19 @@ function registerIpcHandlers(): void {
   // content pushed off-screen the moment the bar needs to grow wider than it
   // was when they positioned it.
   ipcMain.on('hud:resize', (_event, width: number) => {
-    if (!hudWindow) return
-    const bounds = hudWindow.getBounds()
+    const hud = windows.getHud()
+    if (!hud) return
+    const bounds = hud.getBounds()
     const workArea = screen.getDisplayMatching(bounds).workArea
     const rightEdge = bounds.x + bounds.width
     const x = Math.max(rightEdge - width, workArea.x)
-    hudWindow.setBounds({ ...bounds, x, width })
+    hud.setBounds({ ...bounds, x, width })
   })
 
   ipcMain.handle('settings:get-auth-status', () => authStatus())
 
   ipcMain.handle('settings:login', async () => {
-    const result = await twitchAuth.login(hudWindow)
+    const result = await twitchAuth.login(windows.getHud())
     if (result) {
       getSettings().twitch = result
       await saveSettings()
@@ -914,7 +829,7 @@ function registerIpcHandlers(): void {
     if (pendingUpdate?.latest === version) {
       pendingUpdate = undefined
     }
-    hudWindow?.webContents.send('updates:dismissed')
+    windows.sendHud('updates:dismissed')
   })
 
   ipcMain.handle('updates:get-enabled', () => getSettings().updates.enabled)
@@ -956,7 +871,7 @@ async function checkForUpdatesOnStartup(): Promise<void> {
       releaseUrl: result.latest.releaseUrl,
       body: result.latest.body
     }
-    hudWindow?.webContents.send('updates:available')
+    windows.sendHud('updates:available')
   }
 
   getSettings().updates.lastCheckTime = Date.now()
@@ -985,8 +900,8 @@ app.whenReady().then(async () => {
   // on. It's an idle localhost listener until something broadcasts.
   await overlayServer.start(getSettings().modules.mediaGif.overlayPort)
 
-  playbackWindow = createPlaybackWindow()
-  hudWindow = createHudWindow()
+  windows.createPlayback()
+  windows.createHud()
 
   // Check for updates after HUD window is created (so we can notify the renderer)
   void checkForUpdatesOnStartup()

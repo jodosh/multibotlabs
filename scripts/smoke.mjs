@@ -29,9 +29,9 @@
 //     not proven to work against Twitch.
 //
 // Usage:
-//   node scripts/smoke.mjs              # run against current userData settings
-//   node scripts/smoke.mjs --fresh      # move settings.json aside first, assert
-//                                       # fresh-install defaults, then restore
+//   node scripts/smoke.mjs              # reuse the existing throwaway profile
+//   node scripts/smoke.mjs --fresh      # wipe it first, exercising the
+//                                       # first-launch path (tile order)
 //   node scripts/smoke.mjs --keep-open  # leave the app running for inspection
 
 import { spawn } from 'node:child_process'
@@ -349,6 +349,34 @@ async function checkManagerWindows() {
   }
 }
 
+async function checkSettingsWindowVerbs() {
+  section('Settings window: open focuses, toggle closes')
+  // These two channels have near-identical bodies and differ only in what they
+  // do to an already-open window — open focuses, toggle closes. That reads like
+  // copy-paste begging to be merged, so it needs a test that fails loudly if
+  // someone unifies them.
+  const countSettings = async () =>
+    (await targets()).filter((t) => t.type === 'page' && t.url.includes('/settings/')).length
+
+  try {
+    await inHud((evaluate) => evaluate('window.hud.openSettings()'))
+    await sleep(900)
+    check('open-settings opens the window', (await countSettings()) === 1)
+
+    // The distinguishing case: opening again must focus the existing window,
+    // not open a second one and not close it.
+    await inHud((evaluate) => evaluate('window.hud.openSettings()'))
+    await sleep(900)
+    check('open-settings again focuses, leaving exactly one', (await countSettings()) === 1)
+
+    await inHud((evaluate) => evaluate('window.hud.toggleSettings()'))
+    await sleep(900)
+    check('toggle-settings closes it', (await countSettings()) === 0)
+  } catch (error) {
+    check('settings window verbs', false, error.message)
+  }
+}
+
 async function checkOverlay() {
   section('Overlay server')
   const base = `http://127.0.0.1:${OVERLAY_PORT}`
@@ -510,6 +538,7 @@ async function main() {
     await checkModules()
     await checkToggleRoundTrip()
     await checkManagerWindows()
+    await checkSettingsWindowVerbs()
     await checkOverlay()
     await checkPersistence(launch)
 
