@@ -24,7 +24,17 @@ body {
   align-items: center;
   gap: 10px;
   height: 110px;
-  width: fit-content;
+  /* max-content, not fit-content: fit-content resolves to min(max-content,
+     max(min-content, available)), so whenever the window is narrower than the
+     bar's content it clamps to the *min-content* width — tiles squeezed to
+     their minimum — which is narrower than the bar actually needs. main.ts
+     measures this element to decide the window width (hud:resize), so a
+     clamped measurement asks for a window that's still too small, and #bar
+     stops growing while #controls (last in flow) stays clipped off the right
+     edge. It's stable at the wrong size, so it never converges. max-content
+     ignores the available width entirely and always reports the true natural
+     width, which is what the measurement needs. */
+  width: max-content;
   padding: 0 14px;
   box-sizing: border-box;
   background: var(--color-bar-bg);

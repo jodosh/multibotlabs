@@ -2,7 +2,23 @@
 @import '../assets/theme.css';
 @import '../assets/titlebar.css';
 
+/* The page itself must never scroll. The window is a fixed size, and the
+   release notes are arbitrarily long, so without this the body scrolled *and*
+   #release-notes scrolled — two scrollbars stacked side by side, with the
+   action buttons pushed below the fold. Pinning the body to the window height
+   and making it a flex column means the notes pane is the only thing that can
+   overflow: it absorbs whatever height is left over, and the version line and
+   buttons always stay put. */
+html,
 body {
+  height: 100%;
+}
+
+body {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   font-family: 'Space Mono', ui-monospace, monospace;
   margin: 0;
   padding: 20px;
@@ -11,13 +27,25 @@ body {
   color-scheme: dark;
 }
 
+/* A flex item shrinks by default; the titlebar has a fixed design height and
+   bleeds to the window edge via negative margins, so it must not. */
+.titlebar {
+  flex: none;
+}
+
 #version-line {
+  flex: none;
   font-size: 13px;
   margin: 0 0 10px;
 }
 
 #release-notes {
-  max-height: 320px;
+  /* flex:1 + min-height:0 rather than a fixed max-height — a flex item's
+     default min-height:auto refuses to shrink below its content, which would
+     push the buttons off the bottom of a fixed-size window no matter how tall
+     it is. This way the pane simply takes whatever room is left. */
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   margin: 0 0 16px;
   padding: 10px 12px;
@@ -33,9 +61,21 @@ body {
 }
 
 #actions {
+  flex: none;
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  /* Wraps rather than overflowing: the dismiss label is a full sentence, so on
+     a narrower window it drops to its own line instead of shoving the OK and
+     View Release buttons out of reach. */
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+#primary-actions {
+  display: flex;
   gap: 8px;
+  margin-left: auto;
 }
 
 button {
@@ -51,4 +91,20 @@ button {
 
 button:hover {
   background: var(--color-button-bg-hover);
+}
+
+/* Visually subordinate to OK / View Release: this one is a permanent,
+   per-version opt-out, so it shouldn't compete with the two ordinary actions
+   despite having by far the longest label. */
+button.secondary {
+  background: transparent;
+  border: 1px solid var(--color-input-border);
+  color: var(--color-text-muted);
+  font-size: 11px;
+  padding: 5px 10px;
+}
+
+button.secondary:hover {
+  background: var(--color-surface);
+  color: var(--color-text);
 }

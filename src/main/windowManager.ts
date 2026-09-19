@@ -264,8 +264,13 @@ export function createHypeTrainWindow(onClose: () => void, hudWindow?: BrowserWi
 // so unlike those it scrolls internally (see style.css) rather than growing
 // the window to fit.
 export function createUpdateDetailsWindow(onClose: () => void, hudWindow?: BrowserWindow): BrowserWindow {
-  const width = 420
-  const height = 420
+  // Wide enough for the three action buttons (one of which is a full sentence)
+  // to sit on one row, and tall enough that release notes get usable space.
+  // The renderer keeps the page itself from ever scrolling — only the notes
+  // pane does — so this height controls how much of the notes show, not
+  // whether the buttons are reachable.
+  const width = 520
+  const height = 520
 
   const win = new BrowserWindow({
     width,
