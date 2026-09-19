@@ -36,6 +36,7 @@ import { OverlayServer } from './overlay/overlayServer'
 import { CoinksScores } from './library/coinksScores'
 import { UpdateChecker } from './updates/updateChecker'
 import * as twitchAuth from './auth/twitchAuth'
+import { resourcesRoot, rendererRoot, gameAssetsRoot, hypeAssetsRoot } from './app/paths'
 import type { IBotModule } from './modules/types'
 import type { SoundTriggerKind } from './library/types'
 
@@ -102,20 +103,6 @@ const playbackQueue = new PlaybackQueue()
 const coinksScores = new CoinksScores()
 const hypeTrainEventSub = new HypeTrainEventSub()
 
-// Renderer output root, used by the overlay server to serve the OBS page in
-// production. In dev it proxies to Vite instead and this is never read.
-function rendererRoot(): string {
-  return join(__dirname, '../renderer')
-}
-
-function gameAssetsRoot(): string {
-  return join(resourcesRoot(), 'coinks')
-}
-
-function hypeAssetsRoot(): string {
-  return join(resourcesRoot(), 'hype')
-}
-
 const overlayServer = new OverlayServer(
   rendererRoot,
   (id) => mediaLibrary.get(id),
@@ -147,10 +134,6 @@ interface PendingUpdate {
 }
 
 let pendingUpdate: PendingUpdate | undefined
-
-function resourcesRoot(): string {
-  return app.isPackaged ? join(process.resourcesPath, 'resources') : join(app.getAppPath(), 'resources')
-}
 
 function authStatus(): AuthStatus {
   return { loggedIn: Boolean(currentSettings.twitch.accessToken), login: currentSettings.twitch.login }
