@@ -8,7 +8,7 @@ MultiBot is a desktop Twitch bot toolkit that runs locally on your computer. We 
 
 **Most important:** We have **zero visibility** into your data, your settings, or your usage. The app runs on your machine, not ours. We cannot see, access, or receive any of the information described below.
 
-**TL;DR:** MultiBot stores everything locally on your machine. We have no telemetry, no crash reporting, no analytics, no way to access your data. The only network traffic is the app connecting directly to Twitch's official servers for authentication and chat.
+**TL;DR:** MultiBot stores everything locally on your machine. We have no telemetry, no crash reporting, no analytics, no way to access your data. The app talks to Twitch's official servers for authentication and chat, and to GitHub's public API to check whether a newer release exists — nothing else, and nothing that identifies you.
 
 ## What We (the Maintainers) Can and Cannot Access
 
@@ -28,7 +28,7 @@ The app running on your computer handles the following information. **This data 
 
 ### Local Storage (on your computer, never sent anywhere)
 
-- **Twitch authentication:** OAuth access token, refresh token, login name, user ID, token expiration time
+- **Twitch authentication:** OAuth access token, login name, user ID, token expiration time. There is no refresh token — the implicit grant flow does not issue one (see the security note at the end).
 - **Bot configuration:** which bots are enabled, their individual settings (TTS voice, sound file paths, cooldowns, etc.)
 - **Sound library:** trigger text and associated audio files you upload
 - **Coinks scores:** player names and coin game scores
@@ -39,16 +39,20 @@ The app running on your computer handles the following information. **This data 
   revoking the access token — so logging out means logging out, and a different
   account can be used next time.
 
-All of this lives in Electron's userData directory:
-- **Windows:** `%APPDATA%\MultiBot\`
-- **macOS:** `~/Library/Application Support/MultiBot/`
-- **Linux:** `~/.config/MultiBot/`
+All of this lives in Electron's userData directory, named after the app's
+`productName`:
+- **Windows:** `%APPDATA%\multibotlabs\`
+- **macOS:** `~/Library/Application Support/multibotlabs/`
+- **Linux:** `~/.config/multibotlabs/`
+
+(Not to be confused with `MultiBot` — that is the *old* .NET app's directory,
+which this one only ever reads from, during a legacy import you ask for.)
 
 ## Network Requests Made by the App
 
-The app running on your machine makes network requests **only to Twitch's official servers**. We (the maintainers) never receive this traffic — it goes directly from your app to Twitch:
+The app running on your machine makes network requests to Twitch's official servers and to GitHub's public release API. We (the maintainers) never receive this traffic — it goes directly from your app to those services:
 
-1. **Twitch OAuth authentication** — when you click "Connect Twitch"
+1. **Twitch OAuth authentication** — when you click "Log in with Twitch"
    - Your app opens Twitch's official login page
    - You authenticate directly with Twitch (not through us)
    - Twitch sends your app an access token
@@ -60,7 +64,17 @@ The app running on your machine makes network requests **only to Twitch's offici
    - Chat messages stay on your machine; they are not uploaded anywhere
    - We cannot see this traffic or these messages
 
-3. **Local overlay server** (127.0.0.1 only)
+3. **Update check** — to see whether a newer version has been released
+   - An unauthenticated GET to `https://api.github.com/repos/jodosh/multibotlabs/releases`
+   - Sends no account details, no Twitch data, and nothing identifying about you
+     or your machine beyond what any HTTP request necessarily reveals to the
+     server it contacts (your IP address and a user agent)
+   - Runs at most once every 12 hours, on launch, and only while update
+     notifications are enabled — turn them off in Settings and it never runs
+   - GitHub is the only non-Twitch service the app contacts. We cannot see these
+     requests: public-repository API traffic isn't reported to repository owners
+
+4. **Local overlay server** (127.0.0.1 only)
    - The app runs a small HTTP server only on your local machine
    - OBS Browser Sources load overlay pages from this local server
    - No traffic leaves your machine; this is completely offline-capable
@@ -74,6 +88,13 @@ The app does **not** send data to, or integrate with, any third-party services s
 - Cloud sync or backup services
 - Any analytics or data collection platform
 
+Two services are contacted, and only for the app to function: **Twitch**, for
+login and chat, and **GitHub**, for the update check described above. Neither
+receives anything about you that the request itself doesn't require — no account
+details, no settings, no usage data. The update check is the only one you can
+switch off ("Check for updates on startup", in the Settings window); Twitch is
+what the app is for.
+
 ## Legacy Import
 
 When you choose to import data from the old .NET MultiBot app, your app reads files from your local disk only (`%APPDATA%\MultiBot\commands.json`, etc.). This data is imported directly into your local MultiBot storage. No data is sent anywhere during import.
@@ -83,7 +104,7 @@ When you choose to import data from the old .NET MultiBot app, your app reads fi
 - **Access:** All your data is in plaintext JSON in your userData directory. You can read/edit/delete it anytime.
 - **Deletion:** Delete the userData directory to wipe all app data from your computer.
 - **Export:** Your data is already portable (JSON files); copy the userData directory to back it up or move it to another machine.
-- **No tracking:** You can block all network access via firewall and the app will still function (except Twitch chat features obviously need network).
+- **No tracking:** You can block all network access via firewall and the app will still function (except Twitch chat features, which obviously need network; the update check simply fails quietly and the app carries on).
 
 ## Changes to This Policy
 
