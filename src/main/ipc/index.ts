@@ -9,6 +9,7 @@ import { registerLibraryIpc } from './library'
 import { registerUpdatesIpc } from './updates'
 import { registerSettingsIpc } from './settings'
 import { registerHudIpc } from './hud'
+import { registerDiagnosticsIpc } from './diagnostics'
 
 // Registers every IPC handler, grouped one module per channel namespace.
 //
@@ -32,4 +33,5 @@ export function registerIpcHandlers(): void {
   registerUpdatesIpc()
   registerSettingsIpc()
   registerHudIpc()
+  registerDiagnosticsIpc()
 }

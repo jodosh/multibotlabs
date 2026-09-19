@@ -66,6 +66,10 @@ const LOG = join(ROOT, '.smoke', 'app.log')
 // reason that has nothing to do with the code under test.
 const OVERLAY_PORT = 7599
 
+// Seeded into the harness profile so the diagnostics report can be checked for
+// leaks. Distinctive enough that a substring match can't be a coincidence.
+const FAKE_TOKEN = 'SMOKE_FAKE_TOKEN_do_not_ship_9f3a2b'
+
 // Registration order in botDescriptors/registerModules decides fresh-install HUD
 // tile order (via reconcileBotOrder + ModuleManager's insertion-ordered Map).
 // A refactor that reorders registration is a real regression, and it is silent
@@ -414,6 +418,67 @@ async function checkSettingsWindowVerbs() {
   }
 }
 
+async function checkDiagnostics() {
+  section('Diagnostics report')
+  try {
+    // Enable a chat-backed bot first. A fresh profile has everything disabled,
+    // so nothing has attempted to connect and nothing has an error to report —
+    // the lastError assertions below would pass vacuously.
+    const enabled = await inHud(async (evaluate) => {
+      const mods = await evaluate('window.hud.getModules()')
+      const command = mods.find((m) => m.id === 'command')
+      if (!command.enabled) await evaluate(`window.hud.toggleModule('command')`)
+      return true
+    })
+    if (enabled) await sleep(1200)
+
+    await inHud((evaluate) => evaluate('window.hud.openSettings()'))
+    const target = await waitForTarget('/settings/', 6000)
+    if (!target) {
+      check('settings window opens for diagnostics', false)
+      return
+    }
+
+    const json = await withSession(target, (evaluate) =>
+      evaluate('window.settingsApi.getDiagnostics().then((d) => JSON.stringify(d))')
+    )
+    const report = JSON.parse(json)
+
+    const expectedKeys = ['generatedAt', 'app', 'platform', 'auth', 'modules', 'transports', 'overlay', 'library', 'config']
+    const missing = expectedKeys.filter((k) => !(k in report))
+    check('report has all expected sections', missing.length === 0, `missing: ${missing.join(', ')}`)
+
+    // The assertion that matters most. If someone later adds a field that rakes
+    // in getSettings() wholesale, a real user's access token starts travelling
+    // in a document intended for a public GitHub issue. This fails loudly.
+    check('report does NOT contain the access token', !json.includes(FAKE_TOKEN))
+
+    // Absolute paths carry the OS username, so none should appear anywhere.
+    check('report contains no userData path', !json.includes(PROFILE))
+
+    check('module count matches', report.modules?.length === EXPECTED_MODULE_IDS.length)
+
+    // The profile has a token but no channel, so chat-backed modules fail fast
+    // with a reason — proving the lastError plumbing end to end rather than
+    // just that the field exists.
+    const errored = (report.modules ?? []).filter((m) => m.status === 'error')
+    check('at least one module reports an error in this profile', errored.length > 0)
+    check(
+      'errored modules carry a non-empty lastError',
+      errored.length > 0 && errored.every((m) => typeof m.lastError === 'string' && m.lastError.length > 0),
+      errored.map((m) => `${m.id}=${JSON.stringify(m.lastError)}`).join(' ')
+    )
+
+    await inHud((evaluate) => evaluate('window.hud.toggleSettings()'))
+    await sleep(600)
+    // Leave the profile as we found it.
+    await inHud((evaluate) => evaluate(`window.hud.toggleModule('command')`))
+    await sleep(400)
+  } catch (error) {
+    check('diagnostics report', false, error.message)
+  }
+}
+
 async function checkOverlay() {
   section('Overlay server')
   const base = `http://127.0.0.1:${OVERLAY_PORT}`
@@ -564,7 +629,18 @@ async function main() {
   if (!existsSync(PROFILE_SETTINGS)) {
     writeFileSync(
       PROFILE_SETTINGS,
-      JSON.stringify({ modules: { mediaGif: { overlayPort: OVERLAY_PORT } } }, null, 2)
+      JSON.stringify(
+        {
+          // A fake token the diagnostics privacy check looks for. The login is
+          // left empty on purpose: TwitchChatClient rejects an empty channel
+          // before opening a socket, so modules fail fast with no network round
+          // trip, while the token still sits in settings for the leak check.
+          twitch: { accessToken: FAKE_TOKEN, login: '', userId: '', expiresAt: 0 },
+          modules: { mediaGif: { overlayPort: OVERLAY_PORT } }
+        },
+        null,
+        2
+      )
     )
   }
 
@@ -576,6 +652,7 @@ async function main() {
     await checkToggleRoundTrip()
     await checkManagerWindows()
     await checkSettingsWindowVerbs()
+    await checkDiagnostics()
     await checkOverlay()
     await checkPersistence(launch)
 

@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
+import type { DiagnosticsReport } from '../main/diagnostics/collectDiagnostics'
 
 export interface AuthStatus {
   loggedIn: boolean
@@ -45,6 +46,11 @@ const settingsApi = {
 
   getUpdatesEnabled: (): Promise<boolean> => ipcRenderer.invoke('updates:get-enabled'),
   setUpdatesEnabled: (enabled: boolean): Promise<void> => ipcRenderer.invoke('updates:set-enabled', enabled),
+
+  // Point-in-time app state for the Help & Feedback tab. Collected on demand
+  // and never transmitted — the renderer formats it for the user to copy.
+  getDiagnostics: (): Promise<DiagnosticsReport> => ipcRenderer.invoke('diagnostics:get'),
+  openUrl: (url: string): void => ipcRenderer.send('hud:open-url', url),
 
   close: (): void => ipcRenderer.send('window:close')
 }
