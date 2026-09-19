@@ -46,9 +46,12 @@ Run from `app/`:
   chat-backed modules log "No response from Twitch" during a run — expected. A
   module reporting `running` there has been started, not proven to work.
 
-There is no unit test suite or linter configured. `noUnusedLocals` is off, so
-`tsc` will not tell you about dead code — an orphaned function after a refactor
-has to be found by hand.
+There is no unit test suite or linter configured, but `noUnusedLocals` and
+`noUnusedParameters` are on in both tsconfigs, so `npm run typecheck` fails on
+dead code — an orphaned function left behind by a refactor is caught rather than
+accumulating silently. Genuinely-unused function parameters need a leading
+underscore (`_event`), which is the convention already used throughout the IPC
+handlers.
 
 ## Dependencies
 
