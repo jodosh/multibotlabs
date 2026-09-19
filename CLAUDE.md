@@ -226,13 +226,25 @@ style:
   `Promise.all`.** Each `start()` may `acquire()` the ref-counted shared chat
   connection, and starting them concurrently changes how it's established.
 
-**Known gap:** `ModuleManager` has no change events and the HUD doesn't poll, so a
-module's own status transitions (`connecting → running → error`) are never pushed.
-A bot that fails to connect can leave its tile showing `connecting` — or a stale
-"connected" colour — indefinitely. `broadcastModules()` is called explicitly from
-the three places that change what the HUD should show (tile toggle, bot reorder,
-bot show/hide). Fixing this means adding change events, which is a behavior change,
-not a refactor.
+**Status reaches the HUD by polling, not events.** `ModuleManager.watchStatus()`
+compares each module's `status` once a second and fires only when one actually
+changed; `setEnabled()` also reports immediately so a clicked tile doesn't wait for
+the next tick. Polling is deliberate: `status` is a plain getter backed by a private
+field that ten modules assign independently, so an emit-per-module scheme would be
+ten edits with a silent staleness bug waiting on the one that forgot. Polling
+catches every transition however it was made, including ones long after `start()`
+resolves — a dropped connection, an EventSub reconnect.
+
+`broadcastModules()` is still called explicitly from the three user-initiated
+operations (tile toggle, bot reorder, bot show/hide), since those change `enabled`
+and visibility rather than status.
+
+**A chat module with no Twitch login reports `error`, not `running`.**
+`TwitchChatClient.acquire()` refuses an empty channel name. Without that guard
+tmi.js opens an anonymous read-only connection to no channel, reports success, and
+every module sets `running` — so the HUD shows bots as connected and working while
+no message can ever arrive. Throwing routes into the `catch` each module already has
+around `acquire()`, so the tile turns red without touching all nine.
 
 All chat-driven modules share one `TwitchChatClient` (`src/main/modules/
 twitchChatClient.ts`) instead of opening their own IRC connection — `acquire()`/

@@ -1,7 +1,7 @@
 import { app } from 'electron'
 import { join } from 'node:path'
 import { registerIpcHandlers } from './ipc'
-import { registerModules, reconcileBotOrder } from './modules/moduleRegistry'
+import { registerModules, reconcileBotOrder, watchModuleStatus } from './modules/moduleRegistry'
 import { checkForUpdatesOnStartup } from './updates/updateService'
 import { loadSettings, getSettings, saveSettings } from './app/settingsState'
 import { moduleManager, soundLibrary, mediaLibrary, coinksScores } from './app/services'
@@ -58,6 +58,9 @@ app.whenReady().then(async () => {
   windows.createPlayback()
   windows.createHud()
 
+  // After the HUD exists, so the first status broadcast has somewhere to go.
+  watchModuleStatus()
+
   // Check for updates after HUD window is created (so we can notify the renderer)
   void checkForUpdatesOnStartup()
 })
@@ -67,6 +70,7 @@ app.on('window-all-closed', () => {
 })
 
 app.on('before-quit', () => {
+  moduleManager.stopWatching()
   void moduleManager.stopAll()
   void overlayServer.stop()
 })

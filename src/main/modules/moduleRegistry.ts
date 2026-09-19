@@ -77,12 +77,17 @@ export function summarizeAllBots(): BotSummary[] {
     .map((module) => ({ id: module.id, displayName: module.displayName, hidden: hidden.has(module.id) }))
 }
 
-// Pushed explicitly after the three operations that change what the HUD should
-// show. ModuleManager has no change events, so a module's own status
-// transitions (connecting -> running -> error) are never broadcast — a known
-// gap, deliberately left as-is by the refactor that created this file.
+// Pushed after anything that changes what the HUD should show: the three
+// user-initiated operations below, plus module status transitions once
+// watchModuleStatus() is running.
 export function broadcastModules(): void {
   windows.sendHud('hud:modules-changed', summarize(orderedVisibleModules()))
+}
+
+// Starts pushing module status changes to the HUD. Called once at startup,
+// after modules are registered and the HUD exists.
+export function watchModuleStatus(): void {
+  moduleManager.watchStatus(broadcastModules)
 }
 
 // New modules registered after settings.json was last saved (or the very

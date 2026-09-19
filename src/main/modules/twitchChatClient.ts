@@ -29,6 +29,24 @@ export class TwitchChatClient extends EventEmitter {
   }
 
   async acquire(channel: string, accessToken: string): Promise<void> {
+    // Refuse to connect without a channel, rather than letting tmi.js succeed
+    // at connecting to nothing.
+    //
+    // With no Twitch login the channel name is the empty string, and tmi.js
+    // happily opens an anonymous read-only connection and reports success —
+    // joined to no channel, so no message ever arrives. Every module's start()
+    // then sets status 'running' and the HUD shows the bot as connected and
+    // working, which is the single most misleading state this app can be in.
+    // Throwing here routes into the catch each module already has around
+    // acquire(), so the tile turns red without touching all nine of them.
+    //
+    // Validated before refCount is incremented: throwing after the increment
+    // would leak a reference and keep the connection alive past the last
+    // release().
+    if (!channel.trim()) {
+      throw new Error('No Twitch channel — log in on the Settings window first.')
+    }
+
     this.refCount += 1
     if (this.client) return
     await this.connect(channel, accessToken)
