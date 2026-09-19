@@ -31,16 +31,24 @@ configure. This is the floor for every bot, regardless of tier.
   entry to `AppSettings['modules']`, a matching entry in
   `defaultSettings.modules`, and a matching line in `load()`'s merge block
   (`<bot>: { ...defaultSettings.modules.<bot>, ...parsed.modules?.<bot> }`).
-- `src/main/index.ts` — import the class; in `registerModules()`, construct
-  it, call `moduleManager.register(...)`, and call
-  `moduleManager.setEnabled(<bot>.id, currentSettings.modules.<bot>.enabled)`;
-  in `syncSettingsFromModules()`, add the matching
-  `currentSettings.modules.<bot>.enabled = <bot>.enabled` line.
+- `src/main/modules/botDescriptors.ts` — add **one entry** to the
+  `botDescriptors` array: `{ id, settingsKey, construct }`. That single
+  entry drives construction, registration, the startup enable pass, and
+  settings write-back — what used to be three separate edits in
+  `index.ts`. `settingsKey` is typed as `keyof AppSettings['modules']`, so
+  pairing your kebab-case `id` with the wrong camelCase key is a compile
+  error rather than a silent mismatch.
+
+  **Where you put the entry is the fresh-install tile order.** The array's
+  order is the registration order, and `reconcileBotOrder()` appends
+  unknown ids in exactly that sequence. Append to the end unless you mean
+  otherwise.
 - `defaultSettings.bots.order` in `settingsStore.ts` — optional. Not
-  required for correctness: `reconcileBotOrder()` in `main/index.ts` already
-  appends any registered module id missing from a saved `bots.order`, so an
-  existing user's settings file picks it up automatically. Only add it here
-  if you care where the tile lands on a *fresh* install.
+  required for correctness: `reconcileBotOrder()` (now in
+  `main/modules/moduleRegistry.ts`) already appends any registered module id
+  missing from a saved `bots.order`, so an existing user's settings file
+  picks it up automatically. Only add it here if you want the tile in a
+  specific position rather than last on a *fresh* install.
 
 **Nothing else needed.** The HUD tile, its click-to-toggle handler, and its
 status styling are all generic over whatever `hud:get-modules` returns — no
@@ -65,7 +73,8 @@ cooldown — anything a streamer would want to change).
 - `src/renderer/<bot>-settings/main.ts` — load current settings via
   `window.<bot>Settings.get()`, wire form inputs to call `.set()` on change.
 
-**4 edits:**
+**6 edits** (each small — the main-process work is one line in each of three
+places, rather than a block in one big file):
 
 - `electron.vite.config.ts` — add `<bot>Settings` to
   `preload.build.rollupOptions.input`, and `'<bot>-settings'` to
@@ -74,11 +83,19 @@ cooldown — anything a streamer would want to change).
 - `src/main/windowManager.ts` — add `create<Bot>SettingsWindow()`: frameless,
   positioned via `positionAboveHud()`, preload pointed at `<bot>Settings.js`,
   loads the `<bot>-settings` renderer.
-- `src/main/index.ts` — a module-level window variable, a
-  `toggle<Bot>SettingsWindow()` function, a branch in the `hud:open-library`
-  handler routing `id === '<bot>'` to it, and a `<bot>-settings:get`/
-  `<bot>-settings:set` IPC handler pair reading/writing
-  `currentSettings.modules.<bot>`.
+- `src/main/windows/windowRegistry.ts` — add `'<bot>-settings'` to the
+  `WindowKey` union and a one-line factory entry pointing at
+  `create<Bot>SettingsWindow`. No window variable and no toggle function:
+  the registry provides both verbs. Use `toggle` for a manager window
+  opened from a HUD tile — `open` focuses instead of closing, which is
+  wrong for a tile you right-click twice.
+- `src/main/modules/botDescriptors.ts` — add `managerWindow: '<bot>-settings'`
+  to your entry. That is the whole of the right-click routing; there is no
+  `hud:open-library` branch to edit any more.
+- `src/main/ipc/<bot>.ts` — a new file with your `<bot>-settings:get`/
+  `<bot>-settings:set` handler pair reading/writing
+  `getSettings().modules.<bot>`, exported as `register<Bot>Ipc()`, plus one
+  import and one call in `src/main/ipc/index.ts`.
 - `src/renderer/hud/main.ts` — add `'<bot>'` to `MODULES_WITH_MANAGER_WINDOW`
   so right-click on its tile opens the window.
 
@@ -98,13 +115,13 @@ to decide between the two paths below.**
 
 - `src/main/library/types.ts` — add `'<bot>'` to `SoundTriggerKind`.
 - `src/preload/library.ts` — mirror the same union.
-- Every `library:*` CRUD IPC handler in `main/index.ts` is already generic
-  over `kind` — no new handlers needed for the entries themselves.
+- Every `library:*` CRUD IPC handler in `src/main/ipc/library.ts` is already
+  generic over `kind` — no new handlers needed for the entries themselves.
 - Decide where the UI lives: a new tab inside an existing Library-backed
   window (edit `src/renderer/library/index.html` + `main.ts` to add the tab,
   gated the same way existing kind-specific UI is gated), or a new
-  top-level window (extend `LibraryWindowKind` in `windowManager.ts`, the
-  `toggleLibraryWindow` routing in `main/index.ts`, and give
+  top-level window (extend `LibraryWindowKind` in `windowManager.ts`, add a
+  `library:<kind>` key and factory in `windows/windowRegistry.ts`, and give
   `library/index.html`/`main.ts` a code path for the new `kind` — the Emote
   window's single-panel-no-tabs path is the template for "just a list, no
   extra tabs").
@@ -113,7 +130,8 @@ to decide between the two paths below.**
 
 - `src/main/library/<bot>Store.ts` — its own persistence file under
   userData, its own CRUD methods, following `soundLibrary.ts`'s shape.
-- New `<bot>:*` IPC handlers in `main/index.ts` for that CRUD.
+- New `<bot>:*` IPC handlers in a new `src/main/ipc/<bot>.ts` for that CRUD,
+  registered from `src/main/ipc/index.ts`.
 - A renderer window built from scratch (same new-file list as Tier 2, plus
   list-rendering/add/edit/delete UI instead of a settings form).
 
@@ -132,12 +150,26 @@ list rather than a snapshot taken at `start()`.
 |---|---|---|---|
 | `src/main/modules/<bot>Module.ts` | new | | edit (data-driven matching) |
 | `src/main/settings/settingsStore.ts` | edit | edit (extra fields) | |
-| `src/main/index.ts` | edit | edit | edit (routing) |
+| `src/main/modules/botDescriptors.ts` | edit (1 entry) | edit (`managerWindow`) | |
+| `src/main/windows/windowRegistry.ts` | | edit (key + factory) | edit (if new top-level window) |
+| `src/main/ipc/<bot>.ts` | | new | new (if bespoke store) |
+| `src/main/ipc/index.ts` | | edit (1 line) | edit (if bespoke store) |
 | `src/main/library/types.ts` | | | edit |
 | `src/preload/library.ts` | | | edit |
 | `src/preload/<bot>Settings.ts` | | new | |
 | `src/renderer/<bot>-settings/*` | | new | |
-| `src/main/windowManager.ts` | | edit | edit (if new top-level window) |
+| `src/main/windowManager.ts` | | edit (factory) | edit (if new top-level window) |
 | `electron.vite.config.ts` | | edit (2 spots) | edit (if new renderer) |
 | `src/renderer/hud/main.ts` | | edit | |
 | `src/renderer/library/index.html` / `main.ts` | | | edit (if reusing Library window) |
+
+**`src/main/index.ts` is not in this table.** It is now 72 lines — the
+Chromium switches, the `whenReady` sequence and two lifecycle handlers —
+and adding a bot does not touch it.
+
+**The one duplicated list that remains** is `MODULES_WITH_MANAGER_WINDOW`
+in `src/renderer/hud/main.ts` (Tier 2). It can't be derived from
+`botDescriptors` because it lives in the renderer, which can't import
+main-process code; deriving it would mean adding a field to the
+`hud:get-modules` payload. Until then it stays a manual edit, and a
+right-click that does nothing is the symptom of forgetting it.

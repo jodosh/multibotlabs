@@ -29,8 +29,26 @@ Run from `app/`:
 - `npm start` — build and preview the production output (`electron-vite preview`).
 - `npm run typecheck` — type-checks main/preload (`tsconfig.node.json`) and renderer
   (`tsconfig.web.json`) separately; run this after any change, it's the fastest signal.
+- `node scripts/smoke.mjs` — smoke harness. Launches the built app (`npm run build`
+  first) and drives the real renderers over the Chrome DevTools Protocol, asserting
+  module registration order, the toggle round-trip through settings, every manager
+  window opening and closing, the `open`-focuses/`toggle`-closes distinction, the
+  overlay HTTP surface, settings surviving a restart, and that the main process
+  didn't crash. `--fresh` wipes its profile first to exercise the first-launch path.
 
-There is no test suite or linter configured yet.
+  It runs in a throwaway profile via an explicit `--user-data-dir` and on a
+  non-default overlay port, so it can't touch your real settings or fight your own
+  running instance.
+
+  What it does **not** cover, and therefore still needs a human: audio and TTS
+  actually making sound, overlay *rendering* (see the browser-source note below),
+  and the Twitch OAuth login/logout path. Its profile has no credentials, so
+  chat-backed modules log "No response from Twitch" during a run — expected. A
+  module reporting `running` there has been started, not proven to work.
+
+There is no unit test suite or linter configured. `noUnusedLocals` is off, so
+`tsc` will not tell you about dead code — an orphaned function after a refactor
+has to be found by hand.
 
 ## Dependencies
 
@@ -58,18 +76,107 @@ on any advisory parked in an open issue.
 
 ## Architecture
 
+### Main-process layout
+
+`src/main/index.ts` is 72 lines and contains only three things: the pre-ready
+Chromium switches, the `app.whenReady()` sequence, and the two lifecycle handlers.
+Everything else lives in a focused module:
+
+- `app/` — `paths.ts` (resource roots), `services.ts` (the process-wide singletons),
+  `settingsState.ts` (see below).
+- `ipc/` — one module per channel namespace, each exporting a `register*Ipc()`, all
+  called from `ipc/index.ts`. `ipcMain` keys handlers by channel name, so
+  registration order is irrelevant and a duplicate channel throws loudly at startup.
+- `windows/windowRegistry.ts` — which windows are open, and the verbs to open them.
+- `modules/` — `botDescriptors.ts` (the bot list), `moduleRegistry.ts` (registration
+  and HUD summaries), `moduleRefs.ts` (see below).
+- `overlay/overlayService.ts`, `audio/playbackBridge.ts`, `updates/updateService.ts`.
+
+**Keep the `whenReady()` body in `index.ts`, and keep it in order.** It reads:
+load settings → load libraries → register IPC → register modules → reconcile bot
+order → save → start overlay → create playback window → create HUD → check for
+updates. That order is load-bearing — IPC handlers are registered *before* modules
+exist and *before* any window exists, which is why handlers must reach both lazily
+(`moduleRefs.<x>?.`, `windows.getHud()`) and never capture a value at registration
+time. Keeping the sequence visible in one place is what makes that invariant
+maintainable.
+
+**`modules/moduleRefs.ts`** is three optional fields and no logic, and it exists to
+keep the dependency graph acyclic: `overlayService` needs to call
+`coinksModule.finishGame()`, while module registration needs `overlayService`'s
+broadcast callbacks. Routing that one reference through a module nobody else depends
+on breaks a cycle that would otherwise run through the entry point.
+
+**`overlay/overlayService.ts` owns both the `OverlayServer` instance and the
+broadcast helpers, and they must not be separated.** The helpers read
+`overlayServer.status`/`.clientCount()`/`.broadcast()` while the server's own
+constructor callbacks call the helpers — a genuine mutual dependency. Splitting them
+puts an import cycle through whichever file constructs the server, and when that file
+is the entry point the cycle resolves with empty exports and fails at runtime rather
+than at build time.
+
+### Settings live-binding
+
+`src/main/app/settingsState.ts` is the single owner of the live `AppSettings` object,
+and the rule it enforces is the most load-bearing invariant in the main process:
+
+> The settings object has **one owner**, **one assignment** (inside `loadSettings()`),
+> and is reached **only** through `getSettings()` called at the point of use.
+
+Mutating it in place is correct and intended — that's how the bot modules' lazy
+config closures see changes. Replacing it, copying it, or caching a reference to it
+is not. Spreading a *sub-object* is fine and appears throughout
+(`getSettings().modules.atMe = { ...getSettings().modules.atMe, ...patch }`);
+spreading the root is not.
+
+`getSettings()` is a function rather than an exported binding on purpose: a function
+survives destructuring, whereas a destructured value would snapshot `undefined`
+forever — and with no linter here, nothing else would catch that. `saveSettings()`
+takes no argument for the same class of reason: every call site saves the live
+object, so a parameter would only create the opportunity to persist a stale copy.
+
+It deliberately has no null check and no `?? defaultSettings` fallback. A fallback
+would mask an ordering bug by quietly handing back defaults instead of failing.
+
+Two greps verify it holds:
+
+```bash
+grep -rn "= getSettings()$" src/main          # zero — no stored reference
+grep -rn '\.\.\.getSettings()[^.]' src/main  # zero — no root-object copy
+```
+
+The `[^.]` in the second is load-bearing: without it the pattern also matches the
+legitimate sub-object spreads and reports false positives.
+
 ### Process/window layout
 
 Standard Electron main/preload/renderer split via `electron-vite`. Every new
-window needs three things wired together, or it silently won't build/load:
+window needs four things wired together, or it silently won't build/load:
 1. A `create*Window()` function in `src/main/windowManager.ts`.
 2. A dedicated preload script in `src/preload/` exposing one namespaced API object
    via `contextBridge` (e.g. `window.library`, `window.hud`) — never expose raw
    `ipcRenderer`.
 3. Entries for both the preload and the renderer HTML in `electron.vite.config.ts`'s
    `rollupOptions.input` (two separate lists — easy to add one and forget the other).
+4. A `WindowKey` and factory entry in `src/main/windows/windowRegistry.ts`, which
+   owns which windows are currently open. `windowManager.ts` still owns how each is
+   *built*; the registry owns its lifecycle.
 
-Windows, all created from `src/main/index.ts`:
+Two things about the registry are load-bearing and look like cleanup opportunities:
+
+- **`open` and `toggle` are not duplicates.** They differ only in what they do to an
+  already-open window: `open` focuses it, `toggle` closes it. Manager windows are
+  toggled from the tile that opened them (right-click twice to close); the update
+  badge uses `open`, where closing on a second click would be surprising. The smoke
+  harness asserts this, so merging them fails the gate.
+- **Registry entries are deleted by the window's own `'closed'` event, never eagerly
+  on `close()`.** `close()` is asynchronous, so deleting up front lets a fast
+  re-toggle open a *second* window while the first is still closing.
+
+The HUD and playback windows deliberately sit outside that keyspace — they're created
+once at startup, never closed, and their factories take no `onClose`.
+
+Windows, all opened through the registry:
 - **HUD** — the only window visible during normal use. Frameless, transparent,
   always-on-top, draggable via `-webkit-app-region: drag`. Renders one tile per
   registered bot module; left-click toggles enabled/disabled, right-click opens that
@@ -97,9 +204,32 @@ wherever the OS defaults to.
 Every bot implements `IBotModule` (`src/main/modules/types.ts`): `id`, `displayName`,
 `status` (`stopped | connecting | running | error`), `enabled`, `start()`/`stop()`.
 `ModuleManager` is just a registry + `setEnabled()` that calls start/stop. Modules
-read their config via injected closures (`() => currentSettings.twitch.login`, etc.)
-rather than owning settings directly, so `main/index.ts` stays the single place that
-knows how settings map to module behavior.
+read their config via injected closures (`() => getSettings().twitch.login`, etc.)
+rather than owning settings directly, so `src/main/modules/botDescriptors.ts` stays
+the single place that knows how settings map to module behavior. No bot module
+imports `settingsStore` or `electron`.
+
+`botDescriptors` is one array with an entry per bot — `{ id, settingsKey,
+managerWindow?, construct }` — and it drives construction, registration order, the
+startup enable pass, settings write-back, and HUD right-click routing. `settingsKey`
+is typed `keyof AppSettings['modules']`, so a kebab-case id paired with the wrong
+camelCase key is a compile error. Two properties of that array are behavior, not
+style:
+
+- **Its order is the fresh-install HUD tile order.** `reconcileBotOrder()` appends
+  ids unknown to a saved `bots.order` in `ModuleManager`'s registration order, and
+  `ModuleManager` is backed by an insertion-ordered `Map`.
+- **The startup enable pass is a sequential `for…of` with `await`, never
+  `Promise.all`.** Each `start()` may `acquire()` the ref-counted shared chat
+  connection, and starting them concurrently changes how it's established.
+
+**Known gap:** `ModuleManager` has no change events and the HUD doesn't poll, so a
+module's own status transitions (`connecting → running → error`) are never pushed.
+A bot that fails to connect can leave its tile showing `connecting` — or a stale
+"connected" colour — indefinitely. `broadcastModules()` is called explicitly from
+the three places that change what the HUD should show (tile toggle, bot reorder,
+bot show/hide). Fixing this means adding change events, which is a behavior change,
+not a refactor.
 
 All chat-driven modules share one `TwitchChatClient` (`src/main/modules/
 twitchChatClient.ts`) instead of opening their own IRC connection — `acquire()`/
@@ -275,7 +405,7 @@ browser.
 
 ### Playback: data: URLs, not file://
 
-`src/main/index.ts`'s `sendPlaySound()` reads the audio file and sends it to the
+`src/main/audio/playbackBridge.ts`'s `sendPlaySound()` reads the audio file and sends it to the
 Playback window as a base64 `data:` URL, not a `file://` path. This is deliberate,
 not incidental: in `npm run dev`, every renderer page is served from
 `http://localhost:5173` (Vite's dev server), and Chromium blocks a `file://` resource
@@ -287,7 +417,11 @@ fine in a production build (matching origins there) and then fail silently in de
 ### Settings
 
 `src/main/settings/settingsStore.ts` persists one JSON file in Electron's userData
-dir (never in the repo). `SettingsStore.load()` merges saved data over
+dir (never in the repo). It is instantiated by `app/settingsState.ts` and reached
+only through it — see **Settings live-binding** above for the rules that govern the
+in-memory object. This section is about what's on disk.
+
+`SettingsStore.load()` merges saved data over
 `defaultSettings` field-by-field, so old/partial settings files upgrade gracefully
 instead of crashing — extend that merge whenever the schema grows. `twitch` holds
 OAuth state (`accessToken`/`login`/`userId`/`expiresAt`); `bots.order`/`bots.hidden`
