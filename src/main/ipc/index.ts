@@ -7,6 +7,8 @@ import { registerTtsIpc } from './tts'
 import { registerMediaIpc } from './media'
 import { registerLibraryIpc } from './library'
 import { registerUpdatesIpc } from './updates'
+import { registerSettingsIpc } from './settings'
+import { registerHudIpc } from './hud'
 
 // Registers every IPC handler, grouped one module per channel namespace.
 //
@@ -28,4 +30,6 @@ export function registerIpcHandlers(): void {
   registerMediaIpc()
   registerLibraryIpc()
   registerUpdatesIpc()
+  registerSettingsIpc()
+  registerHudIpc()
 }
