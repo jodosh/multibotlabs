@@ -8,7 +8,7 @@ MultiBot is a desktop Twitch bot toolkit that runs locally on your computer. We 
 
 **Most important:** We have **zero visibility** into your data, your settings, or your usage. The app runs on your machine, not ours. We cannot see, access, or receive any of the information described below.
 
-**TL;DR:** MultiBot stores everything locally on your machine. We have no telemetry, no crash reporting, no analytics, no way to access your data. The app talks to Twitch's official servers for authentication and chat, and to GitHub's public API to check whether a newer release exists — nothing else, and nothing that identifies you.
+**TL;DR:** MultiBot stores everything locally on your machine. We have no telemetry, no crash reporting, no analytics, no way to access your data. The app talks to Twitch's official servers for authentication and chat, and to GitHub's public API to check whether a newer release exists — nothing else, and nothing that identifies you. The Help & Feedback tab builds a problem report for you to copy and paste yourself; it is never uploaded.
 
 ## What We (the Maintainers) Can and Cannot Access
 
@@ -47,6 +47,32 @@ All of this lives in Electron's userData directory, named after the app's
 
 (Not to be confused with `MultiBot` — that is the *old* .NET app's directory,
 which this one only ever reads from, during a legacy import you ask for.)
+
+## Report a Problem (Help & Feedback)
+
+The Settings window has a **Help & Feedback** tab that assembles a problem report
+you can paste into a GitHub issue.
+
+**Nothing is sent.** The report is built on your machine, shown to you in an
+editable box, and copied to your clipboard when you press the button. You choose
+where it goes. There is no upload, no endpoint, no background submission — the
+"Open GitHub Issues" button opens your browser and nothing more.
+
+It **includes**: app and Electron/Chrome/Node versions, your OS and architecture,
+each bot's enabled state, status and last error, chat/EventSub/overlay connection
+state, counts of your library entries, and your non-secret configuration (bits
+prices, volumes, the TTS voice name, the overlay port, bot order).
+
+It **never includes**: your access token, your Twitch login name, your user ID,
+any chat message, the AtMe queue, Coinks player names, or any file path (sound
+and media paths and the userData directory all contain your computer's username).
+Counts are reported instead of contents — "12 command sounds", never their text.
+
+Error messages come from libraries we don't control and can mention your channel
+name, so the channel name is stripped from them before it reaches the report.
+
+The box is editable on purpose: read it before you share it, and delete anything
+you would rather not post.
 
 ## Network Requests Made by the App
 

@@ -21,9 +21,16 @@ configure. This is the floor for every bot, regardless of tier.
 
 - `src/main/modules/<bot>Module.ts` — implements `IBotModule`
   (`src/main/modules/types.ts`): `id`, `displayName`, `description`,
-  `enabled`, `status`, `start()`, `stop()`. `start()`/`stop()` acquire/release
-  the shared `TwitchChatClient` and subscribe/unsubscribe its `'message'`
-  event; match logic goes in a private `handleMessage()`.
+  `enabled`, `status`, `lastError`, `start()`, `stop()`. `start()`/`stop()`
+  acquire/release the shared `TwitchChatClient` and subscribe/unsubscribe its
+  `'message'` event; match logic goes in a private `handleMessage()`.
+
+  **Whenever you set `status = 'error'`, set `lastError` too** — use
+  `describeError(error)` from `./describeError`, and clear it both when a new
+  start begins and on stop. Copy an existing module's `start()`; they are all
+  the same shape. A bot that fails without a reason shows a red HUD tile that
+  explains nothing and produces a problem report nobody can act on, which is
+  the exact bug issue #15 was filed about.
 
 **3 edits:**
 

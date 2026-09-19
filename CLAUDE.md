@@ -93,7 +93,8 @@ Everything else lives in a focused module:
 - `windows/windowRegistry.ts` — which windows are open, and the verbs to open them.
 - `modules/` — `botDescriptors.ts` (the bot list), `moduleRegistry.ts` (registration
   and HUD summaries), `moduleRefs.ts` (see below).
-- `overlay/overlayService.ts`, `audio/playbackBridge.ts`, `updates/updateService.ts`.
+- `overlay/overlayService.ts`, `audio/playbackBridge.ts`, `updates/updateService.ts`,
+  `diagnostics/collectDiagnostics.ts`.
 
 **Keep the `whenReady()` body in `index.ts`, and keep it in order.** It reads:
 load settings → load libraries → register IPC → register modules → reconcile bot
@@ -150,6 +151,36 @@ grep -rn '\.\.\.getSettings()[^.]' src/main  # zero — no root-object copy
 
 The `[^.]` in the second is load-bearing: without it the pattern also matches the
 legitimate sub-object spreads and reports false positives.
+
+### Diagnostics and problem reports
+
+The Settings window's Help & Feedback tab builds a GitHub-ready report from
+`src/main/diagnostics/collectDiagnostics.ts`, reached via `diagnostics:get`.
+
+**It adds no network request, and must not.** The report is generated locally,
+shown in an editable textarea, and copied to the clipboard for the user to paste.
+`docs/PRIVACY.md` documents exactly this; a submit endpoint would falsify it, and
+that document has already gone stale once on this repo when a feature was built
+after the doc said it did not exist.
+
+Two rules govern what the collector reads, and they are not interchangeable:
+
+- **Secrets are never collected, not collected-then-stripped.** The access token,
+  login and user id are never read into the report — auth is two booleans. No
+  absolute path goes in either, since sound/media paths and the userData
+  directory all contain the OS username. Counts, never contents.
+- **Error text is scrubbed of the channel name, and only error text.** Those
+  strings come from tmi.js and Twitch, which embed it. An earlier version scrubbed
+  the whole report and mangled it for anyone whose login is an ordinary word — a
+  user called `celebration` got `<channel>` in place of the module id, its
+  display name and its config key. Everything outside error text is built field
+  by field and provably never reads the login.
+
+The access token additionally gets a global backstop pass, which is safe only
+because a token is high-entropy and cannot collide with real content.
+`scripts/smoke.mjs` seeds a fake token and asserts it never appears in the
+serialized report — that assertion is what catches a future field that reads
+`getSettings()` too broadly.
 
 ### Process/window layout
 
@@ -239,6 +270,15 @@ resolves — a dropped connection, an EventSub reconnect.
 `broadcastModules()` is still called explicitly from the three user-initiated
 operations (tile toggle, bot reorder, bot show/hide), since those change `enabled`
 and visibility rather than status.
+
+**A failed module records why.** `IBotModule.lastError` holds the reason, set
+wherever `status` becomes `'error'` and cleared when a new start begins and on
+stop, so a stale reason never outlives its failure. It reaches the HUD tile's
+tooltip and the problem report. Before this existed every module swallowed the
+error with a bare `catch {}` — the reason was destroyed at the moment it was
+known, which is what made a red tile unexplainable. `TwitchChatClient`,
+`HypeTrainEventSub` and `OverlayServer` each expose a `lastError` of the same
+shape.
 
 **A chat module with no Twitch login reports `error`, not `running`.**
 `TwitchChatClient.acquire()` refuses an empty channel name. Without that guard
