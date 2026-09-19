@@ -16,7 +16,7 @@ const versionLine = document.getElementById('version-line') as HTMLParagraphElem
 const releaseNotes = document.getElementById('release-notes') as HTMLPreElement
 const dismissButton = document.getElementById('dismiss-button') as HTMLButtonElement
 const okButton = document.getElementById('ok-button') as HTMLButtonElement
-const viewButton = document.getElementById('view-button') as HTMLButtonElement
+const downloadButton = document.getElementById('download-button') as HTMLButtonElement
 
 closeButton.addEventListener('click', () => {
   window.updateDetails.close()
@@ -47,7 +47,7 @@ async function load(): Promise<void> {
     window.updateDetails.close()
   })
 
-  viewButton.addEventListener('click', () => {
+  downloadButton.addEventListener('click', () => {
     window.updateDetails.openUrl(DOWNLOAD_URL)
   })
 }

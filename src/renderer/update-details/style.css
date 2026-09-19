@@ -67,7 +67,7 @@ body {
   justify-content: space-between;
   /* Wraps rather than overflowing: the dismiss label is a full sentence, so on
      a narrower window it drops to its own line instead of shoving the OK and
-     View Release buttons out of reach. */
+     Download Update buttons out of reach. */
   flex-wrap: wrap;
   gap: 10px;
 }
@@ -93,7 +93,7 @@ button:hover {
   background: var(--color-button-bg-hover);
 }
 
-/* Visually subordinate to OK / View Release: this one is a permanent,
+/* Visually subordinate to OK / Download Update: this one is a permanent,
    per-version opt-out, so it shouldn't compete with the two ordinary actions
    despite having by far the longest label. */
 button.secondary {

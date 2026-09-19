@@ -269,7 +269,7 @@ export function createUpdateDetailsWindow(onClose: () => void, hudWindow?: Brows
   // The renderer keeps the page itself from ever scrolling — only the notes
   // pane does — so this height controls how much of the notes show, not
   // whether the buttons are reachable.
-  const width = 520
+  const width = 560
   const height = 520
 
   const win = new BrowserWindow({
