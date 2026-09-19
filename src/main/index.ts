@@ -2,6 +2,7 @@ import { app, ipcMain, dialog, BrowserWindow, shell, screen } from 'electron'
 import { join, extname, basename } from 'node:path'
 import { readFile } from 'node:fs/promises'
 import type { LibraryWindowKind } from './windowManager'
+import { registerIpcHandlers as registerExtractedIpc } from './ipc'
 import * as windows from './windows/windowRegistry'
 import {
   overlayServer,
@@ -376,6 +377,8 @@ function openUpdateDetailsWindow(): void {
 }
 
 function registerIpcHandlers(): void {
+  registerExtractedIpc()
+
   ipcMain.handle('hud:get-modules', () => summarize(orderedVisibleModules()))
 
   ipcMain.handle('hud:toggle-module', async (_event, id: string) => {
@@ -513,23 +516,6 @@ function registerIpcHandlers(): void {
       await saveSettings()
     }
   )
-
-  ipcMain.on('playback:sound-ended', () => {
-    playbackQueue.release()
-  })
-
-  // Surfaces otherwise-silent playback failures (e.g. a blocked audio.play())
-  // to this process's console, since the playback window is never shown and
-  // has no visible devtools to check.
-  ipcMain.on('playback:error', (_event, message: string) => {
-    console.error('[playback]', message)
-  })
-
-  // Shared by the Settings and Library windows' custom titlebars, since
-  // they're frameless and have no OS-provided close button.
-  ipcMain.on('window:close', (event) => {
-    BrowserWindow.fromWebContents(event.sender)?.close()
-  })
 
   ipcMain.handle('library:list-sounds', (_event, kind: SoundTriggerKind) => soundLibrary.listSounds(kind))
 
@@ -737,10 +723,6 @@ function registerIpcHandlers(): void {
   })
 
   ipcMain.handle('update-details:get', () => pendingUpdate)
-
-  ipcMain.on('hud:open-url', (_event, url: string) => {
-    void shell.openExternal(url)
-  })
 }
 
 async function checkForUpdatesOnStartup(): Promise<void> {
