@@ -9,3 +9,6 @@ Thumbs.db
 
 # Local-only reference material (e.g. the old .NET app source) — never commit.
 untracked/
+
+# scripts/smoke.mjs's throwaway Electron profile and captured app output.
+.smoke/
