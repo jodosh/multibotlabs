@@ -2,13 +2,46 @@
 @import '../assets/theme.css';
 @import '../assets/titlebar.css';
 
+/* The page itself must never scroll — only the active panel. Without this the
+   body scrolls *and* the report textarea scrolls, which is the double-scrollbar
+   the Update Available window had. Pinning the body to the window height and
+   making it a flex column means the tabs stay put and the panel absorbs
+   whatever height is left. */
+html,
 body {
+  height: 100%;
+}
+
+body {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   font-family: 'Space Mono', ui-monospace, monospace;
   margin: 0;
   padding: 20px;
   background: var(--color-bg);
   color: var(--color-text);
   color-scheme: dark;
+}
+
+/* Fixed design height, and it bleeds to the window edge via negative margins,
+   so it must not shrink as a flex item. */
+.titlebar {
+  flex: none;
+}
+
+.tabs {
+  flex: none;
+}
+
+/* min-height:0 is load-bearing: a flex item's default min-height:auto refuses
+   to shrink below its content, so without it a long panel pushes the window
+   rather than scrolling inside it. */
+.panel {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 h2 {
@@ -138,4 +171,81 @@ button:disabled {
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+/* Tabs: same look as the Library window's, copied rather than re-invented so
+   the two windows don't drift into two different tab styles. */
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+.tab {
+  padding: 6px 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-input-border);
+  color: var(--color-text-muted);
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.tab.active {
+  color: var(--color-text);
+  border-color: var(--color-status-connecting);
+}
+
+.field {
+  display: block;
+  margin-bottom: 12px;
+}
+
+.field span {
+  display: block;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-bottom: 4px;
+}
+
+/* The report textarea is the one element here that must be comfortable to read
+   a wall of text in, so it gets the monospace face and room to breathe. */
+.field textarea,
+#report-output {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-input-border);
+  border-radius: 6px;
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+#report-output {
+  color: var(--color-text-muted);
+  white-space: pre;
+  overflow-wrap: normal;
+  overflow-x: auto;
+}
+
+.report-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+button.secondary {
+  background: transparent;
+  border: 1px solid var(--color-input-border);
+  color: var(--color-text-muted);
+}
+
+button.secondary:hover {
+  background: var(--color-surface);
+  color: var(--color-text);
 }

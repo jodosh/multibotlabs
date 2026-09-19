@@ -11,6 +11,12 @@
       <button id="close-button" class="titlebar-close" title="Close">✕</button>
     </div>
 
+    <div id="tabs" class="tabs">
+      <button id="tab-settings" class="tab active" type="button">Settings</button>
+      <button id="tab-help" class="tab" type="button">Help &amp; Feedback</button>
+    </div>
+
+    <div id="settings-panel" class="panel">
     <section>
       <h2>Integrations</h2>
       <div class="integration-row">
@@ -49,6 +55,44 @@
       <p id="legacy-import-summary" class="hint"></p>
       <pre id="legacy-import-skipped" class="import-skipped" hidden></pre>
     </section>
+    </div>
+
+    <div id="help-panel" class="panel" hidden>
+      <section>
+        <h2>Report a problem</h2>
+        <p class="hint">
+          Fill in whatever you can, then copy the report and paste it into a
+          GitHub issue. Nothing is sent anywhere — the text below never leaves
+          this machine until you paste it.
+        </p>
+
+        <label class="field">
+          <span>What were you doing?</span>
+          <textarea id="report-doing" rows="2" placeholder="e.g. Starting the app after logging out"></textarea>
+        </label>
+        <label class="field">
+          <span>What happened?</span>
+          <textarea id="report-happened" rows="2" placeholder="e.g. The Command bot tile went red"></textarea>
+        </label>
+        <label class="field">
+          <span>What did you expect?</span>
+          <textarea id="report-expected" rows="2" placeholder="e.g. It should connect, or tell me why it can't"></textarea>
+        </label>
+      </section>
+
+      <section>
+        <h2>Report to copy</h2>
+        <p class="hint">
+          Editable — delete anything you'd rather not share before copying.
+        </p>
+        <textarea id="report-output" rows="14" spellcheck="false"></textarea>
+        <div class="report-actions">
+          <button id="copy-report-button" type="button">Copy for GitHub</button>
+          <button id="open-issues-button" class="secondary" type="button">Open GitHub Issues</button>
+        </div>
+        <p id="copy-confirmation" class="hint" hidden>Copied to clipboard.</p>
+      </section>
+    </div>
 
     <script type="module" src="./main.ts"></script>
   </body>

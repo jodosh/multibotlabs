@@ -65,8 +65,12 @@ export function createHudWindow(): BrowserWindow {
 // the HUD — the renderer draws its own titlebar with a close button, since
 // there's no OS-provided one.
 export function createSettingsWindow(onClose: () => void, hudWindow?: BrowserWindow): BrowserWindow {
-  const width = 480
-  const height = 560
+  // Sized for the Help & Feedback tab, which is the taller of the two: three
+  // context fields plus a report big enough to actually read before sharing.
+  // The renderer scrolls the active panel rather than the page, so this sets
+  // how much is visible, not what is reachable.
+  const width = 560
+  const height = 680
 
   const win = new BrowserWindow({
     width,
