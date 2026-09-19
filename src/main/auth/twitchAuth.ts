@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import type { BrowserWindow } from 'electron'
+import { session, type BrowserWindow } from 'electron'
 import { createAuthWindow } from '../windowManager'
 import { TWITCH_CLIENT_ID, TWITCH_REDIRECT_URI, TWITCH_SCOPES } from './twitchOAuthConfig'
 
@@ -85,7 +85,36 @@ export function login(hudWindow?: BrowserWindow): Promise<TwitchAuthResult | nul
   })
 }
 
+// Twitch's own session cookies, which the login window leaves behind in the
+// default session. Removing only twitch.tv leaves any other cookie alone —
+// today the auth window is the only thing in this app that browses the web, but
+// that is not a reason to reach for clearStorageData().
+async function clearTwitchCookies(): Promise<void> {
+  try {
+    const cookies = await session.defaultSession.cookies.get({})
+    await Promise.all(
+      cookies
+        .filter((cookie) => cookie.domain?.replace(/^\./, '').endsWith('twitch.tv'))
+        .map((cookie) => {
+          // cookies.remove needs a URL, which has to be reconstructed: a
+          // host-only cookie's domain has no leading dot, a shared one does.
+          const host = cookie.domain?.replace(/^\./, '') ?? ''
+          const url = `${cookie.secure ? 'https' : 'http'}://${host}${cookie.path ?? '/'}`
+          return session.defaultSession.cookies.remove(url, cookie.name)
+        })
+    )
+  } catch (error) {
+    // Best-effort, same as the revoke below: a failure here leaves the user
+    // signed in to Twitch, which is untidy but not broken.
+    console.error('[twitch] failed to clear session cookies:', error)
+  }
+}
+
 export async function logout(accessToken: string): Promise<void> {
+  // Runs even with no token. "Log out" has to mean the session is gone, and a
+  // stored token is not the only thing that keeps someone signed in.
+  await clearTwitchCookies()
+
   if (!accessToken) return
   try {
     const params = new URLSearchParams({ client_id: TWITCH_CLIENT_ID, token: accessToken })

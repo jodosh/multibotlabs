@@ -33,6 +33,11 @@ The app running on your computer handles the following information. **This data 
 - **Sound library:** trigger text and associated audio files you upload
 - **Coinks scores:** player names and coin game scores
 - **Chat history:** chat messages that trigger bots (stored in memory only, cleared on restart)
+- **Twitch session cookies:** the login window is a real browser window, so Twitch
+  sets its own cookies there, stored by Electron alongside the data above. They are
+  what let Twitch recognise you. Logging out in the app deletes them — along with
+  revoking the access token — so logging out means logging out, and a different
+  account can be used next time.
 
 All of this lives in Electron's userData directory:
 - **Windows:** `%APPDATA%\MultiBot\`
