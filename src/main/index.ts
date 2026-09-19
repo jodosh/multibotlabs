@@ -3,6 +3,17 @@ import { join, extname, basename } from 'node:path'
 import { readFile } from 'node:fs/promises'
 import type { LibraryWindowKind } from './windowManager'
 import * as windows from './windows/windowRegistry'
+import {
+  overlayServer,
+  overlayStatus,
+  celebrationOverlayStatus,
+  coinksOverlayStatus,
+  hypeTrainOverlayStatus,
+  broadcastCoinksState,
+  broadcastHypeTrainBattleEvent,
+  startFireworks,
+  playMedia
+} from './overlay/overlayService'
 import { LiveStudioAudienceModule } from './modules/liveStudioAudienceModule'
 import { TextToSpeechModule, TTS_COMMAND } from './modules/textToSpeechModule'
 import { CommandModule } from './modules/commandModule'
@@ -10,12 +21,11 @@ import { EmoteModule } from './modules/emoteModule'
 import { AtMeModule, type AtMeQueueItem } from './modules/atMeModule'
 import { MediaGifModule } from './modules/mediaGifModule'
 import { CelebrationModule } from './modules/celebrationModule'
-import { CoinksModule, type CoinksState } from './modules/coinksModule'
-import { HypeTrainModule, type HypeTrainBattleEvent } from './modules/hypeTrainModule'
+import { CoinksModule } from './modules/coinksModule'
+import { HypeTrainModule } from './modules/hypeTrainModule'
 import { loadSettings, getSettings, saveSettings } from './app/settingsState'
 import { SUPPORTED_MEDIA_EXTENSIONS, type MediaTrigger } from './library/mediaLibrary'
 import { importLegacyData, legacyDataExists } from './library/legacyImport'
-import { OverlayServer } from './overlay/overlayServer'
 import { UpdateChecker } from './updates/updateChecker'
 import * as twitchAuth from './auth/twitchAuth'
 import { moduleRefs } from './modules/moduleRefs'
@@ -28,7 +38,7 @@ import {
   coinksScores,
   hypeTrainEventSub
 } from './app/services'
-import { resourcesRoot, rendererRoot, gameAssetsRoot, hypeAssetsRoot } from './app/paths'
+import { resourcesRoot } from './app/paths'
 import type { IBotModule } from './modules/types'
 import type { SoundTriggerKind } from './library/types'
 
@@ -75,23 +85,6 @@ interface AuthStatus {
 }
 
 
-
-const overlayServer = new OverlayServer(
-  rendererRoot,
-  (id) => mediaLibrary.get(id),
-  () => {
-    broadcastOverlayStatus()
-    broadcastCelebrationOverlayStatus()
-    broadcastCoinksOverlayStatus()
-    broadcastHypeTrainOverlayStatus()
-  },
-  (result) => {
-    void coinksScores.record(result.player, result.score)
-    moduleRefs.coinks?.finishGame(result.player)
-  },
-  gameAssetsRoot,
-  hypeAssetsRoot
-)
 
 let updateChecker: UpdateChecker | undefined
 
@@ -208,106 +201,6 @@ function playTriggerSound(filePath: string, volume: number): void {
 
 function speak(text: string, voiceName: string): void {
   windows.sendPlayback('playback:speak', text, voiceName)
-}
-
-function overlayStatus(): {
-  status: string
-  url: string
-  port: number
-  clients: number
-  error?: string
-} {
-  return {
-    status: overlayServer.status,
-    url: overlayServer.overlayUrl(),
-    port: overlayServer.port || getSettings().modules.mediaGif.overlayPort,
-    clients: overlayServer.clientCount('media'),
-    error: overlayServer.lastError
-  }
-}
-
-function broadcastOverlayStatus(): void {
-  windows.send('media', 'media:overlay-status-changed', overlayStatus())
-}
-
-function celebrationOverlayStatus(): { status: string; url: string; clients: number; error?: string } {
-  return {
-    status: overlayServer.status,
-    url: overlayServer.overlayUrl('overlay-fireworks'),
-    clients: overlayServer.clientCount('fireworks'),
-    error: overlayServer.lastError
-  }
-}
-
-function broadcastCelebrationOverlayStatus(): void {
-  windows.send('celebration', 'celebration:overlay-status-changed', celebrationOverlayStatus())
-}
-
-function startFireworks(shells: number): void {
-  overlayServer.broadcast({ type: 'celebration:fireworks', shells, volume: getSettings().modules.celebration.volume })
-}
-
-function coinksOverlayStatus(): { status: string; url: string; clients: number; error?: string } {
-  return {
-    status: overlayServer.status,
-    url: overlayServer.overlayUrl('overlay-coinks'),
-    clients: overlayServer.clientCount('coinks'),
-    error: overlayServer.lastError
-  }
-}
-
-function broadcastCoinksOverlayStatus(): void {
-  windows.send('coinks', 'coinks:overlay-status-changed', coinksOverlayStatus())
-}
-
-function broadcastCoinksState(state: CoinksState): void {
-  windows.send('coinks', 'coinks:state-changed', state)
-}
-
-// Translates HypeTrainModule's battle events into overlay broadcasts — kept
-// here rather than in the module itself so the module stays settings-agnostic
-// (volume only needs adding to the 'begin' event; the overlay remembers it
-// for the rest of the battle, same as Celebration/Coinks).
-function broadcastHypeTrainBattleEvent(event: HypeTrainBattleEvent): void {
-  if (event.type === 'hypetrain:begin') {
-    overlayServer.broadcast({ ...event, volume: getSettings().modules.hypeTrain.volume })
-  } else {
-    overlayServer.broadcast(event)
-  }
-  broadcastHypeTrainState()
-}
-
-function hypeTrainOverlayStatus(): { status: string; url: string; clients: number; error?: string } {
-  return {
-    status: overlayServer.status,
-    url: overlayServer.overlayUrl('overlay-hypetrain'),
-    clients: overlayServer.clientCount('hype-train'),
-    error: overlayServer.lastError
-  }
-}
-
-function broadcastHypeTrainOverlayStatus(): void {
-  windows.send('hype-train', 'hype-train:overlay-status-changed', hypeTrainOverlayStatus())
-}
-
-function broadcastHypeTrainState(): void {
-  windows.send('hype-train', 'hype-train:state-changed', moduleRefs.hypeTrain?.state())
-}
-
-// Media is addressed by id over HTTP rather than by file path — the overlay
-// page is a browser source on a different origin from the filesystem, so it
-// can't read local files directly (the same constraint that made sounds use
-// data: URLs, solved here by simply serving them).
-function playMedia(entry: MediaTrigger): void {
-  overlayServer.broadcast({
-    type: 'media:play',
-    id: entry.id,
-    url: `/media/${entry.id}`,
-    element: entry.element,
-    anchor: entry.anchor,
-    durationSeconds: entry.durationSeconds,
-    volume: entry.volume
-  })
 }
 
 async function registerModules(): Promise<void> {

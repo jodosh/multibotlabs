@@ -331,8 +331,29 @@ async function checkManagerWindows() {
         continue
       }
 
-      const value = await withSession(target, (evaluate) => evaluate(probe))
-      check(`${id}: opens and its preload API responds`, value !== undefined && value !== null)
+      // A page target exists as soon as the window is created, but the preload's
+      // contextBridge exposure lands a moment later — so a single evaluate can
+      // catch `window.<api>` still undefined and fail a window that is perfectly
+      // fine. Poll instead. (This flaked exactly once in ~10 runs before being
+      // fixed, which is the worst frequency: often enough to erode trust in the
+      // gate, rare enough to be dismissed as noise.)
+      let value
+      const deadline = Date.now() + 5000
+      let lastError = ''
+      while (Date.now() < deadline) {
+        try {
+          value = await withSession(target, (evaluate) => evaluate(probe))
+          if (value !== undefined && value !== null) break
+        } catch (error) {
+          lastError = error.message
+        }
+        await sleep(250)
+      }
+      check(
+        `${id}: opens and its preload API responds`,
+        value !== undefined && value !== null,
+        lastError
+      )
 
       // The same channel the HUD's right-click uses is a *toggle*: invoking it
       // again closes the window. Asserting the target is really gone afterward
