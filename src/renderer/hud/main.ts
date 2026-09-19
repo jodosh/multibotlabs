@@ -6,20 +6,6 @@ declare global {
   }
 }
 
-// Modules with a dedicated management window, opened via right-click. The
-// window kind isn't needed here — main process resolves it from the id — but
-// having this map keeps the "does this tile have one" check in one place.
-const MODULES_WITH_MANAGER_WINDOW = new Set([
-  'command',
-  'emote',
-  'text-to-speech',
-  'at-me',
-  'media-gif',
-  'celebration',
-  'coinks',
-  'hype-train'
-])
-
 const barElement = document.getElementById('bar') as HTMLDivElement
 const tilesContainer = document.getElementById('tiles') as HTMLDivElement
 const settingsButton = document.getElementById('settings-button') as HTMLButtonElement
@@ -32,14 +18,13 @@ function render(modules: ModuleSummary[]): void {
     const tile = document.createElement('button')
     tile.className = `tile ${module.status}${module.enabled ? ' enabled' : ''}`
     tile.textContent = module.displayName
-    const hasManagerWindow = MODULES_WITH_MANAGER_WINDOW.has(module.id)
-    tile.title = hasManagerWindow
+    tile.title = module.hasManagerWindow
       ? `${module.displayName} — ${module.status} (right-click to manage)`
       : `${module.displayName} — ${module.status}`
     tile.addEventListener('click', () => {
       void window.hud.toggleModule(module.id)
     })
-    if (hasManagerWindow) {
+    if (module.hasManagerWindow) {
       tile.addEventListener('contextmenu', (event) => {
         event.preventDefault()
         window.hud.openLibrary(module.id)

@@ -10,6 +10,7 @@ export interface ModuleSummary {
   displayName: string
   status: string
   enabled: boolean
+  hasManagerWindow: boolean
 }
 
 export interface BotSummary {
@@ -64,7 +65,11 @@ export function summarize(modules: IBotModule[]): ModuleSummary[] {
     id: module.id,
     displayName: module.displayName,
     status: module.status,
-    enabled: module.enabled
+    enabled: module.enabled,
+    // Static per module, so it is redundant on every broadcast — but the
+    // alternative is a second IPC channel the renderer must fetch and sequence
+    // before its first paint, to save nine booleans on an infrequent message.
+    hasManagerWindow: managerWindowFor(module.id) !== undefined
   }))
 }
 

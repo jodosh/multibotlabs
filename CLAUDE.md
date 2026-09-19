@@ -183,8 +183,9 @@ Windows, all opened through the registry:
 - **HUD** — the only window visible during normal use. Frameless, transparent,
   always-on-top, draggable via `-webkit-app-region: drag`. Renders one tile per
   registered bot module; left-click toggles enabled/disabled, right-click opens that
-  module's manager window if it has one (`MODULES_WITH_MANAGER_WINDOW` in
-  `renderer/hud/main.ts`).
+  module's manager window if it has one (driven by `hasManagerWindow` on each
+  entry in the `hud:get-modules` payload, derived from `botDescriptors` — the
+  renderer keeps no list of its own).
 - **Settings** — Integrations (Twitch login/logout) and Available Bots (per-bot
   show/hide + drag-to-reorder, persisted and reflected in HUD tile order).
 - **Library** — shared by Command and Emote (`?kind=command|emote` query param

@@ -5,6 +5,11 @@ export interface ModuleSummary {
   displayName: string
   status: string
   enabled: boolean
+  // Whether right-clicking this tile opens a manager window. Derived in the
+  // main process from botDescriptors, rather than duplicated as a list of ids
+  // in the renderer — a stale copy there shows up as right-click silently
+  // doing nothing.
+  hasManagerWindow: boolean
 }
 
 const hudApi = {

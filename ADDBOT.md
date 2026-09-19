@@ -73,8 +73,10 @@ cooldown — anything a streamer would want to change).
 - `src/renderer/<bot>-settings/main.ts` — load current settings via
   `window.<bot>Settings.get()`, wire form inputs to call `.set()` on change.
 
-**6 edits** (each small — the main-process work is one line in each of three
-places, rather than a block in one big file):
+**5 edits** (each small — the main-process work is one line in each of three
+places, rather than a block in one big file). Note there is no renderer edit:
+the HUD learns which tiles have a manager window from the `managerWindow` field
+below, so right-click wires itself up:
 
 - `electron.vite.config.ts` — add `<bot>Settings` to
   `preload.build.rollupOptions.input`, and `'<bot>-settings'` to
@@ -96,9 +98,6 @@ places, rather than a block in one big file):
   `<bot>-settings:set` handler pair reading/writing
   `getSettings().modules.<bot>`, exported as `register<Bot>Ipc()`, plus one
   import and one call in `src/main/ipc/index.ts`.
-- `src/renderer/hud/main.ts` — add `'<bot>'` to `MODULES_WITH_MANAGER_WINDOW`
-  so right-click on its tile opens the window.
-
 **Verify:** `npm run typecheck`, `npm run build`, right-click the tile,
 confirm the settings window opens positioned above the HUD, fields load
 current values, and changes persist across a restart.
@@ -160,16 +159,14 @@ list rather than a snapshot taken at `start()`.
 | `src/renderer/<bot>-settings/*` | | new | |
 | `src/main/windowManager.ts` | | edit (factory) | edit (if new top-level window) |
 | `electron.vite.config.ts` | | edit (2 spots) | edit (if new renderer) |
-| `src/renderer/hud/main.ts` | | edit | |
 | `src/renderer/library/index.html` / `main.ts` | | | edit (if reusing Library window) |
 
 **`src/main/index.ts` is not in this table.** It is now 72 lines — the
 Chromium switches, the `whenReady` sequence and two lifecycle handlers —
 and adding a bot does not touch it.
 
-**The one duplicated list that remains** is `MODULES_WITH_MANAGER_WINDOW`
-in `src/renderer/hud/main.ts` (Tier 2). It can't be derived from
-`botDescriptors` because it lives in the renderer, which can't import
-main-process code; deriving it would mean adding a field to the
-`hud:get-modules` payload. Until then it stays a manual edit, and a
-right-click that does nothing is the symptom of forgetting it.
+**There is no longer a duplicated bot list anywhere.** `botDescriptors` is
+the only place a bot is enumerated: registration order, settings key,
+startup enable, settings write-back, and manager-window routing all come
+from it, and the HUD receives `hasManagerWindow` per module rather than
+keeping its own copy of the list.

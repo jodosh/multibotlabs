@@ -293,6 +293,22 @@ async function checkModules() {
     (m) => typeof m.displayName === 'string' && m.displayName.length > 0 && typeof m.status === 'string'
   )
   check('every module has displayName and status', shaped)
+
+  // hasManagerWindow is derived from botDescriptors and drives whether the HUD
+  // wires up right-click at all. If it drifts, right-click silently does
+  // nothing — no error, nothing in the log — so it needs asserting against the
+  // set of modules whose windows this harness independently opens below.
+  const claimsManager = modules.filter((m) => m.hasManagerWindow).map((m) => m.id).sort()
+  const expected = MANAGER_WINDOWS.map((w) => w.id).sort()
+  check(
+    'hasManagerWindow matches the modules with manager windows',
+    JSON.stringify(claimsManager) === JSON.stringify(expected),
+    `reported [${claimsManager.join(', ')}]`
+  )
+  check(
+    'every module reports hasManagerWindow as a boolean',
+    modules.every((m) => typeof m.hasManagerWindow === 'boolean')
+  )
 }
 
 async function checkToggleRoundTrip() {
