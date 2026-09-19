@@ -3,6 +3,8 @@ import { registerAtMeIpc } from './atme'
 import { registerCelebrationIpc } from './celebration'
 import { registerCoinksIpc } from './coinks'
 import { registerHypeTrainIpc } from './hypeTrain'
+import { registerTtsIpc } from './tts'
+import { registerMediaIpc } from './media'
 
 // Registers every IPC handler, grouped one module per channel namespace.
 //
@@ -20,4 +22,6 @@ export function registerIpcHandlers(): void {
   registerCelebrationIpc()
   registerCoinksIpc()
   registerHypeTrainIpc()
+  registerTtsIpc()
+  registerMediaIpc()
 }

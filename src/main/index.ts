@@ -494,29 +494,6 @@ function registerIpcHandlers(): void {
     return summary
   })
 
-  ipcMain.handle('tts-settings:get', () => getSettings().modules.textToSpeech)
-
-  // Reports Command-bot entries the free !tts command would shadow, so the
-  // TTS window can warn about them. Checked live on each open rather than
-  // cached: the Library window can add a !tts entry at any time.
-  ipcMain.handle('tts-settings:command-conflicts', () => {
-    const matches = (text: string): boolean =>
-      (text.startsWith('!') ? text.slice(1) : text).trim().toLowerCase() === TTS_COMMAND
-
-    return {
-      sounds: soundLibrary.listSounds('command').filter((sound) => matches(sound.trigger)).length,
-      textReplies: soundLibrary.listTextReplies().filter((reply) => matches(reply.command)).length
-    }
-  })
-
-  ipcMain.handle(
-    'tts-settings:set',
-    async (_event, patch: Partial<{ enabled: boolean; minimumBits: number; voiceName: string; freeCommandEnabled: boolean }>) => {
-      getSettings().modules.textToSpeech = { ...getSettings().modules.textToSpeech, ...patch }
-      await saveSettings()
-    }
-  )
-
   ipcMain.handle('library:list-sounds', (_event, kind: SoundTriggerKind) => soundLibrary.listSounds(kind))
 
   ipcMain.handle('library:add-sound-from-dialog', async (event, kind: SoundTriggerKind, trigger: string, volume: number) => {
@@ -571,48 +548,6 @@ function registerIpcHandlers(): void {
   ipcMain.handle('library:set-user-intros-enabled', async (_event, value: boolean) => {
     getSettings().modules.command.userIntrosEnabled = value
     await saveSettings()
-  })
-
-  ipcMain.handle('media:list', () => mediaLibrary.list())
-
-  ipcMain.handle('media:add-from-dialog', async (event) => {
-    const parentWindow = BrowserWindow.fromWebContents(event.sender)
-    const dialogOptions: Electron.OpenDialogOptions = {
-      properties: ['openFile', 'multiSelections'],
-      filters: [{ name: 'Media', extensions: SUPPORTED_MEDIA_EXTENSIONS }]
-    }
-    const result = parentWindow
-      ? await dialog.showOpenDialog(parentWindow, dialogOptions)
-      : await dialog.showOpenDialog(dialogOptions)
-    if (result.canceled || result.filePaths.length === 0) return []
-
-    // Command defaults to the filename without extension, matching how the old
-    // app seeded it on drag-and-drop.
-    const added: MediaTrigger[] = []
-    for (const filePath of result.filePaths) {
-      added.push(await mediaLibrary.add(basename(filePath, extname(filePath)), filePath))
-    }
-    return added
-  })
-
-  ipcMain.handle('media:update', (_event, id: string, patch: Partial<MediaTrigger>) => mediaLibrary.update(id, patch))
-
-  ipcMain.handle('media:remove', (_event, id: string) => mediaLibrary.remove(id))
-
-  ipcMain.handle('media:test', (_event, id: string) => {
-    const entry = mediaLibrary.get(id)
-    if (entry) playMedia(entry)
-  })
-
-  ipcMain.handle('media:overlay-status', () => overlayStatus())
-
-  ipcMain.handle('media:set-port', async (_event, port: number) => {
-    if (Number.isInteger(port) && port >= 1024 && port <= 65535 && port !== overlayServer.port) {
-      getSettings().modules.mediaGif.overlayPort = port
-      await saveSettings()
-      await overlayServer.start(port)
-    }
-    return overlayStatus()
   })
 
   ipcMain.on('updates:dismiss', async (_event, version: string) => {
