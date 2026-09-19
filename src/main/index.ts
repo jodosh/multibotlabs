@@ -15,8 +15,6 @@ import {
   createUpdateDetailsWindow,
   type LibraryWindowKind
 } from './windowManager'
-import { ModuleManager } from './modules/moduleManager'
-import { TwitchChatClient } from './modules/twitchChatClient'
 import { LiveStudioAudienceModule } from './modules/liveStudioAudienceModule'
 import { TextToSpeechModule, TTS_COMMAND } from './modules/textToSpeechModule'
 import { CommandModule } from './modules/commandModule'
@@ -26,16 +24,22 @@ import { MediaGifModule } from './modules/mediaGifModule'
 import { CelebrationModule } from './modules/celebrationModule'
 import { CoinksModule, type CoinksState } from './modules/coinksModule'
 import { HypeTrainModule, type HypeTrainBattleEvent } from './modules/hypeTrainModule'
-import { HypeTrainEventSub } from './twitch/hypeTrainEventSub'
 import { loadSettings, getSettings, saveSettings } from './app/settingsState'
-import { SoundLibrary } from './library/soundLibrary'
-import { MediaLibrary, SUPPORTED_MEDIA_EXTENSIONS, type MediaTrigger } from './library/mediaLibrary'
-import { PlaybackQueue } from './library/playbackQueue'
+import { SUPPORTED_MEDIA_EXTENSIONS, type MediaTrigger } from './library/mediaLibrary'
 import { importLegacyData, legacyDataExists } from './library/legacyImport'
 import { OverlayServer } from './overlay/overlayServer'
-import { CoinksScores } from './library/coinksScores'
 import { UpdateChecker } from './updates/updateChecker'
 import * as twitchAuth from './auth/twitchAuth'
+import { moduleRefs } from './modules/moduleRefs'
+import {
+  moduleManager,
+  chatClient,
+  soundLibrary,
+  mediaLibrary,
+  playbackQueue,
+  coinksScores,
+  hypeTrainEventSub
+} from './app/services'
 import { resourcesRoot, rendererRoot, gameAssetsRoot, hypeAssetsRoot } from './app/paths'
 import type { IBotModule } from './modules/types'
 import type { SoundTriggerKind } from './library/types'
@@ -94,13 +98,6 @@ let hypeTrainWindow: BrowserWindow | undefined
 let updateDetailsWindow: BrowserWindow | undefined
 const libraryWindows: Partial<Record<LibraryWindowKind, BrowserWindow>> = {}
 
-const moduleManager = new ModuleManager()
-const chatClient = new TwitchChatClient()
-const soundLibrary = new SoundLibrary()
-const mediaLibrary = new MediaLibrary()
-const playbackQueue = new PlaybackQueue()
-const coinksScores = new CoinksScores()
-const hypeTrainEventSub = new HypeTrainEventSub()
 
 const overlayServer = new OverlayServer(
   rendererRoot,
@@ -113,15 +110,12 @@ const overlayServer = new OverlayServer(
   },
   (result) => {
     void coinksScores.record(result.player, result.score)
-    coinksModule?.finishGame(result.player)
+    moduleRefs.coinks?.finishGame(result.player)
   },
   gameAssetsRoot,
   hypeAssetsRoot
 )
 
-let atMeModule: AtMeModule | undefined
-let coinksModule: CoinksModule | undefined
-let hypeTrainModule: HypeTrainModule | undefined
 let updateChecker: UpdateChecker | undefined
 
 interface PendingUpdate {
@@ -320,7 +314,7 @@ function broadcastHypeTrainOverlayStatus(): void {
 }
 
 function broadcastHypeTrainState(): void {
-  hypeTrainWindow?.webContents.send('hype-train:state-changed', hypeTrainModule?.state())
+  hypeTrainWindow?.webContents.send('hype-train:state-changed', moduleRefs.hypeTrain?.state())
 }
 
 // Media is addressed by id over HTTP rather than by file path — the overlay
@@ -383,7 +377,7 @@ async function registerModules(): Promise<void> {
     () => getSettings().modules.atMe,
     (queue) => atMeQueueWindow?.webContents.send('atme:queue-changed', queue)
   )
-  atMeModule = atMe
+  moduleRefs.atMe = atMe
 
   const mediaGif = new MediaGifModule(
     chatClient,
@@ -423,7 +417,7 @@ async function registerModules(): Promise<void> {
     () => overlayServer.broadcast({ type: 'coinks:throw' }),
     broadcastCoinksState
   )
-  coinksModule = coinks
+  moduleRefs.coinks = coinks
 
   moduleManager.register(celebration)
   moduleManager.register(coinks)
@@ -434,7 +428,7 @@ async function registerModules(): Promise<void> {
     () => getSettings().twitch.accessToken,
     broadcastHypeTrainBattleEvent
   )
-  hypeTrainModule = hypeTrain
+  moduleRefs.hypeTrain = hypeTrain
   moduleManager.register(hypeTrain)
 
   await moduleManager.setEnabled(liveStudioAudience.id, getSettings().modules.liveStudioAudience.enabled)
@@ -799,10 +793,10 @@ function registerIpcHandlers(): void {
     }
   )
 
-  ipcMain.handle('atme:list-queue', (): AtMeQueueItem[] => atMeModule?.listQueue() ?? [])
+  ipcMain.handle('atme:list-queue', (): AtMeQueueItem[] => moduleRefs.atMe?.listQueue() ?? [])
 
   ipcMain.handle('atme:dismiss', (_event, id: string) => {
-    atMeModule?.dismiss(id)
+    moduleRefs.atMe?.dismiss(id)
   })
 
   ipcMain.handle('media:list', () => mediaLibrary.list())
@@ -874,10 +868,10 @@ function registerIpcHandlers(): void {
     }
   )
 
-  ipcMain.handle('coinks:get-state', () => coinksModule?.state() ?? { currentPlayer: undefined, queue: [] })
+  ipcMain.handle('coinks:get-state', () => moduleRefs.coinks?.state() ?? { currentPlayer: undefined, queue: [] })
 
   ipcMain.handle('coinks:enqueue', (_event, player: string) => {
-    coinksModule?.enqueue(player)
+    moduleRefs.coinks?.enqueue(player)
   })
 
   ipcMain.handle('coinks:leaderboard', () => coinksScores.leaderboard())
@@ -894,10 +888,10 @@ function registerIpcHandlers(): void {
   })
 
   ipcMain.handle('hype-train:test', () => {
-    hypeTrainModule?.simulate()
+    moduleRefs.hypeTrain?.simulate()
   })
 
-  ipcMain.handle('hype-train:get-state', () => hypeTrainModule?.state() ?? { active: false, level: 1, archerCount: 0 })
+  ipcMain.handle('hype-train:get-state', () => moduleRefs.hypeTrain?.state() ?? { active: false, level: 1, archerCount: 0 })
 
   ipcMain.handle('hype-train:overlay-status', () => hypeTrainOverlayStatus())
 
