@@ -3,6 +3,7 @@ import { join, extname, basename } from 'node:path'
 import { readFile } from 'node:fs/promises'
 import type { LibraryWindowKind } from './windowManager'
 import { registerIpcHandlers as registerExtractedIpc } from './ipc'
+import { checkForUpdatesOnStartup } from './updates/updateService'
 import { playSound, playTriggerSound, speak } from './audio/playbackBridge'
 import * as windows from './windows/windowRegistry'
 import {
@@ -28,7 +29,6 @@ import { HypeTrainModule } from './modules/hypeTrainModule'
 import { loadSettings, getSettings, saveSettings } from './app/settingsState'
 import { SUPPORTED_MEDIA_EXTENSIONS, type MediaTrigger } from './library/mediaLibrary'
 import { importLegacyData, legacyDataExists } from './library/legacyImport'
-import { UpdateChecker } from './updates/updateChecker'
 import * as twitchAuth from './auth/twitchAuth'
 import { moduleRefs } from './modules/moduleRefs'
 import {
@@ -87,17 +87,6 @@ interface AuthStatus {
 }
 
 
-
-let updateChecker: UpdateChecker | undefined
-
-interface PendingUpdate {
-  current: string
-  latest: string
-  releaseUrl: string
-  body: string
-}
-
-let pendingUpdate: PendingUpdate | undefined
 
 function authStatus(): AuthStatus {
   return { loggedIn: Boolean(getSettings().twitch.accessToken), login: getSettings().twitch.login }
@@ -324,12 +313,6 @@ function toggleHypeTrainWindow(): void {
   windows.toggle('hype-train')
 }
 
-// Focuses rather than closes when already open — see the note on open/toggle
-// in windowRegistry.ts.
-function openUpdateDetailsWindow(): void {
-  windows.open('update-details')
-}
-
 function registerIpcHandlers(): void {
   registerExtractedIpc()
 
@@ -448,59 +431,6 @@ function registerIpcHandlers(): void {
     return summary
   })
 
-  ipcMain.on('updates:dismiss', async (_event, version: string) => {
-    getSettings().updates.dismissedVersion = version
-    await saveSettings()
-    // The badge only disappears once dismissal is confirmed here, rather than
-    // optimistically in the renderer, so a HUD restart before this save
-    // lands can't leave the badge permanently hidden for an update that was
-    // never actually recorded as dismissed.
-    if (pendingUpdate?.latest === version) {
-      pendingUpdate = undefined
-    }
-    windows.sendHud('updates:dismissed')
-  })
-
-  ipcMain.handle('updates:get-enabled', () => getSettings().updates.enabled)
-
-  ipcMain.handle('updates:set-enabled', async (_event, enabled: boolean) => {
-    getSettings().updates.enabled = enabled
-    await saveSettings()
-  })
-
-  ipcMain.on('hud:open-update-details', () => {
-    openUpdateDetailsWindow()
-  })
-
-  ipcMain.handle('update-details:get', () => pendingUpdate)
-}
-
-async function checkForUpdatesOnStartup(): Promise<void> {
-  if (!getSettings().updates.enabled) {
-    return
-  }
-
-  const lastCheck = getSettings().updates.lastCheckTime ?? 0
-  const hoursSinceLastCheck = (Date.now() - lastCheck) / (1000 * 60 * 60)
-  if (hoursSinceLastCheck < 12) {
-    return
-  }
-
-  updateChecker = new UpdateChecker(app.getVersion())
-  const result = await updateChecker.checkForUpdates()
-
-  if (result.updateAvailable && result.latest && result.latest.version !== getSettings().updates.dismissedVersion) {
-    pendingUpdate = {
-      current: result.current,
-      latest: result.latest.version,
-      releaseUrl: result.latest.releaseUrl,
-      body: result.latest.body
-    }
-    windows.sendHud('updates:available')
-  }
-
-  getSettings().updates.lastCheckTime = Date.now()
-  await saveSettings()
 }
 
 app.whenReady().then(async () => {
