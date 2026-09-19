@@ -573,26 +573,6 @@ function registerIpcHandlers(): void {
     await saveSettings()
   })
 
-  ipcMain.handle('atme:get-settings', () => ({
-    matchMentions: getSettings().modules.atMe.matchMentions,
-    matchHighlights: getSettings().modules.atMe.matchHighlights,
-    togglesCollapsed: getSettings().modules.atMe.togglesCollapsed
-  }))
-
-  ipcMain.handle(
-    'atme:set-settings',
-    async (_event, patch: Partial<{ matchMentions: boolean; matchHighlights: boolean; togglesCollapsed: boolean }>) => {
-      getSettings().modules.atMe = { ...getSettings().modules.atMe, ...patch }
-      await saveSettings()
-    }
-  )
-
-  ipcMain.handle('atme:list-queue', (): AtMeQueueItem[] => moduleRefs.atMe?.listQueue() ?? [])
-
-  ipcMain.handle('atme:dismiss', (_event, id: string) => {
-    moduleRefs.atMe?.dismiss(id)
-  })
-
   ipcMain.handle('media:list', () => mediaLibrary.list())
 
   ipcMain.handle('media:add-from-dialog', async (event) => {
@@ -625,69 +605,6 @@ function registerIpcHandlers(): void {
   })
 
   ipcMain.handle('media:overlay-status', () => overlayStatus())
-
-  ipcMain.handle('celebration:get-settings', () => ({
-    bitsPrice: getSettings().modules.celebration.bitsPrice,
-    commandEnabled: getSettings().modules.celebration.commandEnabled,
-    shellCount: getSettings().modules.celebration.shellCount,
-    volume: getSettings().modules.celebration.volume
-  }))
-
-  ipcMain.handle(
-    'celebration:set-settings',
-    async (_event, patch: Partial<{ bitsPrice: number; commandEnabled: boolean; shellCount: number; volume: number }>) => {
-      getSettings().modules.celebration = { ...getSettings().modules.celebration, ...patch }
-      await saveSettings()
-    }
-  )
-
-  ipcMain.handle('celebration:test', () => {
-    startFireworks(getSettings().modules.celebration.shellCount)
-  })
-
-  ipcMain.handle('celebration:overlay-status', () => celebrationOverlayStatus())
-
-  ipcMain.handle('coinks:get-settings', () => ({
-    bitsPrice: getSettings().modules.coinks.bitsPrice,
-    commandEnabled: getSettings().modules.coinks.commandEnabled,
-    coinsPerGame: getSettings().modules.coinks.coinsPerGame,
-    volume: getSettings().modules.coinks.volume
-  }))
-
-  ipcMain.handle(
-    'coinks:set-settings',
-    async (_event, patch: Partial<{ bitsPrice: number; commandEnabled: boolean; coinsPerGame: number; volume: number }>) => {
-      getSettings().modules.coinks = { ...getSettings().modules.coinks, ...patch }
-      await saveSettings()
-    }
-  )
-
-  ipcMain.handle('coinks:get-state', () => moduleRefs.coinks?.state() ?? { currentPlayer: undefined, queue: [] })
-
-  ipcMain.handle('coinks:enqueue', (_event, player: string) => {
-    moduleRefs.coinks?.enqueue(player)
-  })
-
-  ipcMain.handle('coinks:leaderboard', () => coinksScores.leaderboard())
-
-  ipcMain.handle('coinks:overlay-status', () => coinksOverlayStatus())
-
-  ipcMain.handle('hype-train:get-settings', () => ({
-    volume: getSettings().modules.hypeTrain.volume
-  }))
-
-  ipcMain.handle('hype-train:set-settings', async (_event, patch: Partial<{ volume: number }>) => {
-    getSettings().modules.hypeTrain = { ...getSettings().modules.hypeTrain, ...patch }
-    await saveSettings()
-  })
-
-  ipcMain.handle('hype-train:test', () => {
-    moduleRefs.hypeTrain?.simulate()
-  })
-
-  ipcMain.handle('hype-train:get-state', () => moduleRefs.hypeTrain?.state() ?? { active: false, level: 1, archerCount: 0 })
-
-  ipcMain.handle('hype-train:overlay-status', () => hypeTrainOverlayStatus())
 
   ipcMain.handle('media:set-port', async (_event, port: number) => {
     if (Number.isInteger(port) && port >= 1024 && port <= 65535 && port !== overlayServer.port) {

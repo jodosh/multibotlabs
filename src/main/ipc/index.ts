@@ -1,4 +1,8 @@
 import { registerCommonIpc } from './common'
+import { registerAtMeIpc } from './atme'
+import { registerCelebrationIpc } from './celebration'
+import { registerCoinksIpc } from './coinks'
+import { registerHypeTrainIpc } from './hypeTrain'
 
 // Registers every IPC handler, grouped one module per channel namespace.
 //
@@ -12,4 +16,8 @@ import { registerCommonIpc } from './common'
 // accessors — never by capturing a value at registration time.
 export function registerIpcHandlers(): void {
   registerCommonIpc()
+  registerAtMeIpc()
+  registerCelebrationIpc()
+  registerCoinksIpc()
+  registerHypeTrainIpc()
 }
