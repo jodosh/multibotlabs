@@ -29,9 +29,9 @@ depend on each other:
   tracks the train's progress, leveling up (and facing a fresh troll) each time the
   train does.
 
-Command, Emote, and Coinks-style features share one underlying library and manager UI
-rather than each reinventing sound/data storage — add a sound, assign it a trigger,
-done.
+Command, Emote, and User Intros (a tab in the Command window that gives each viewer
+their own sound for `!intro`) share one underlying sound library and manager UI
+rather than each reinventing sound storage — add a sound, assign it a trigger, done.
 
 ### Stream overlays
 
@@ -55,13 +55,37 @@ scene, and it composites with real transparency.
   and they share infrastructure (one Twitch chat connection, one sound library) without
   depending on each other's state.
 - **The streamer's tools stay on the streamer's machine.** Overlay rendering, audio,
-  and game logic all run locally; the only network traffic MultiBot generates on its
-  own is talking to Twitch's API.
+  and game logic all run locally. The only network traffic MultiBot generates on its
+  own is talking to Twitch's API, plus an update check against GitHub's releases
+  that you can switch off in Settings — see the [Privacy Policy](./docs/PRIVACY.md).
+
+## Installing
+
+Download the installer for your platform from the
+[Releases page](https://github.com/jodosh/multibotlabs/releases): `.exe` for
+Windows, `.dmg` for macOS (Apple Silicon), and `.AppImage` or `.deb` for Linux.
+
+The builds are not code-signed yet, so the first launch shows a warning: on
+Windows, SmartScreen's "Windows protected your PC" (choose **More info → Run
+anyway**); on macOS, Gatekeeper refuses to open it until you allow it under
+**System Settings → Privacy & Security**.
+
+### Coming from the old MultiBot
+
+If the old Windows MultiBot app's data is on this machine, the Settings window (⚙ on
+the HUD) shows an **Import from old MultiBot** section. It brings over your sound
+commands, emotes, text replies, and media, so you don't have to rebuild them by hand.
+
+### Reporting a problem
+
+Open Settings and go to the **Help & Feedback** tab. It builds a problem report you
+can review and edit, then copy and paste into a GitHub issue (the tab links there).
+Nothing is sent automatically, and the report leaves out your login, token, and file
+paths.
 
 ## Requirements
 
 - Windows, macOS (Apple Silicon), or Linux
-- [Node.js](https://nodejs.org/) 20+
 - **Linux only, for the Text-To-Speech bot:** the speech-dispatcher daemon and
   at least one voice. Windows and macOS reach their system voices with no extra
   setup. Without it the app runs fine, but the TTS voice list comes up empty and
@@ -76,7 +100,10 @@ scene, and it composites with real transparency.
 
   Check it works outside the app with `spd-say -L`, which should list voices.
 
-## Getting started
+## Building from source
+
+Needs [Node.js](https://nodejs.org/) 22.12 or newer — the version CI and releases
+build with.
 
 ```bash
 npm install
@@ -88,14 +115,15 @@ This starts the app in development mode with hot reload.
 Other commands:
 
 ```bash
-npm run build      # production build, output to out/
-npm start           # build and preview the production output
-npm run typecheck   # type-check main/preload and renderer code
+npm run build            # production build, output to out/
+npm start                # build and preview the production output
+npm run typecheck        # type-check main/preload and renderer code
+node scripts/smoke.mjs   # drive the built app end to end (run a build first)
 ```
 
 ## Project structure
 
-```
+```text
 src/
   main/        # Electron main process: bot modules, settings, the overlay server
   preload/     # contextBridge scripts, one per window — the only place IPC is exposed
@@ -103,8 +131,9 @@ src/
 resources/     # bundled sounds, sprites, and audio used by the built-in bots
 ```
 
-See `CLAUDE.md` for a detailed architectural walkthrough, and `ADDBOT.md` for a
-step-by-step guide to adding a new bot.
+See [`CLAUDE.md`](CLAUDE.md) for a detailed architectural walkthrough,
+[`ADDBOT.md`](ADDBOT.md) for a step-by-step guide to adding a new bot, and
+[`RELEASING.md`](RELEASING.md) for how releases are versioned and cut.
 
 ## Privacy & Security
 
